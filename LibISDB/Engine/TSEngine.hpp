@@ -71,7 +71,7 @@ namespace LibISDB
 		template<typename T> T * GetFilter() const { return m_FilterGraph.GetFilter<T>(); }
 		template<typename T> T * GetFilterExplicit() const { return m_FilterGraph.GetFilterExplicit<T>(); }
 
-		bool OpenSource(const CStringView &Name);
+		bool OpenSource(const String &Name);
 		bool CloseSource();
 		bool IsSourceOpen() const;
 
@@ -133,6 +133,7 @@ namespace LibISDB
 		virtual void OnEventChanged(uint16_t EventID) {}
 		virtual void OnVideoStreamTypeChanged(uint8_t StreamType) {}
 		virtual void OnAudioStreamTypeChanged(uint8_t StreamType) {}
+		virtual void OnAudioComponentTypeChanged(uint8_t ComponentType) {}
 
 		bool m_IsBuilt;
 		FilterGraph m_FilterGraph;
@@ -149,6 +150,7 @@ namespace LibISDB
 
 		uint8_t m_VideoStreamType;
 		uint8_t m_AudioStreamType;
+		uint8_t m_AudioComponentType = COMPONENT_TYPE_INVALID;
 		int m_CurVideoStream;
 		uint8_t m_CurVideoComponentTag;
 		int m_CurAudioStream;
@@ -158,7 +160,7 @@ namespace LibISDB
 		bool m_StartStreamingOnSourceOpen;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_TS_ENGINE_H
+#endif // ifndef LIBISDB_TS_ENGINE_H
