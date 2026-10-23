@@ -47,6 +47,16 @@ namespace LibISDB::DirectShow
 			CHANNEL_6_BL,
 			CHANNEL_6_BR
 		};
+		enum {
+			CHANNEL_8_FL,
+			CHANNEL_8_FR,
+			CHANNEL_8_FC,
+			CHANNEL_8_LFE,
+			CHANNEL_8_BL,
+			CHANNEL_8_BR,
+			CHANNEL_8_SL,
+			CHANNEL_8_SR
+		};
 
 		struct AudioInfo {
 			long Frequency = 0;
@@ -90,6 +100,15 @@ namespace LibISDB::DirectShow
 		virtual bool GetChannelMap(int Channels, int *pMap) const { return false; }
 		virtual bool GetDownmixInfo(ReturnArg<DownmixInfo> Info) const { return false; }
 
+		// 22.2ch等、8chを超える音声のダウンミックス先チャンネル数を指定する
+		// (対応しているデコーダのみ意味を持つ。それ以外は無視される)
+		virtual void SetDownmixChannels(int Channels) {}
+
+		// LatmDownmixPresets.iniのプリセットを明示的な名前で指定する。
+		// nullptrまたは空文字列の場合、SetDownmixChannels()の値から決まる
+		// 既定名が使われる(対応しているデコーダのみ意味を持つ)
+		virtual void SetDownmixPresetName(const CharType *pName) {}
+
 		bool GetAudioInfo(ReturnArg<AudioInfo> Info) const;
 
 	protected:
@@ -98,7 +117,7 @@ namespace LibISDB::DirectShow
 		AudioInfo m_AudioInfo;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_AUDIO_DECODER_H
+#endif // ifndef LIBISDB_AUDIO_DECODER_H

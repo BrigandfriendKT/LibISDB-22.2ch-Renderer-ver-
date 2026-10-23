@@ -27,14 +27,19 @@
 #include "../../../../LibISDBPrivate.hpp"
 #include "../../../../LibISDBWindows.hpp"
 #include "AudioDecoderFilter.hpp"
-#ifdef LIBISDB_USE_FAAD2
 #include "AACDecoder_FAAD2.hpp"
-#else
+#ifdef LIBISDB_HAS_FDK_AAC
 #include "AACDecoder_FDK.hpp"
+#include "AACLATMDecoder_FDK.hpp"
+#endif
+#ifdef LIBISDB_HAS_LIBAV_AAC
+#include "AACLATMDecoder_Libav.hpp"
 #endif
 #include "MPEGAudioDecoder.hpp"
 #include "AC3Decoder.hpp"
 #include <mmreg.h>
+#include <cstring>
+#include <cwchar>
 #include "../../../../Base/DebugDef.hpp"
 
 
@@ -59,7 +64,7 @@ constexpr REFERENCE_TIME REFERENCE_TIME_SECOND = 10000000LL;
 
 // サンプルのバッファサイズ
 // (フレーム当たりのサンプル数 * 16ビット * 5.1ch)
-constexpr long SAMPLE_BUFFER_SIZE = SAMPLES_PER_FRAME * 2 * 6;
+constexpr long SAMPLE_BUFFER_SIZE = SAMPLES_PER_FRAME * 2 * 24; // 22.2ch(24ch)まで対応
 
 // MediaSample用に確保するバッファ数
 constexpr long NUM_SAMPLE_BUFFERS = 4;
@@ -76,7 +81,7 @@ template<typename T> constexpr int16_t ClampSample16(T v)
 }
 
 
-}	// namespace
+} // namespace
 
 
 
@@ -111,7 +116,7 @@ AudioDecoderFilter::AudioDecoderFilter(LPUNKNOWN pUnk, HRESULT *phr)
 
 	, m_pSampleCallback(nullptr)
 {
-	LIBISDB_TRACE(LIBISDB_STR("AudioDecoderFilter::AudioDecoderFilter %p\n"), this);
+	LIBISDB_TRACE(LIBISDB_STR("AudioDecoderFilter::AudioDecoderFilter {}\n"), static_cast<void *>(this));
 
 	*phr = S_OK;
 
@@ -240,7 +245,7 @@ HRESULT AudioDecoderFilter::DecideBufferSize(IMemAllocator *pAllocator, ALLOCATO
 
 	// アロケータプロパティを設定しなおす
 	ALLOCATOR_PROPERTIES Actual;
-	HRESULT hr = pAllocator->SetProperties(pprop, &Actual);
+	const HRESULT hr = pAllocator->SetProperties(pprop, &Actual);
 	if (FAILED(hr))
 		return hr;
 
@@ -298,7 +303,7 @@ HRESULT AudioDecoderFilter::StopStreaming()
 
 HRESULT AudioDecoderFilter::BeginFlush()
 {
-	HRESULT hr = CTransformFilter::BeginFlush();
+	const HRESULT hr = CTransformFilter::BeginFlush();
 
 	CAutoLock AutoLock(&m_cPropLock);
 
@@ -314,7 +319,7 @@ HRESULT AudioDecoderFilter::BeginFlush()
 
 HRESULT AudioDecoderFilter::NewSegment(REFERENCE_TIME tStart, REFERENCE_TIME tStop, double dRate)
 {
-	HRESULT hr = CTransformFilter::NewSegment(tStart, tStop, dRate);
+	const HRESULT hr = CTransformFilter::NewSegment(tStart, tStop, dRate);
 
 	CAutoLock AutoLock(&m_cPropLock);
 
@@ -340,6 +345,7 @@ HRESULT AudioDecoderFilter::Transform(IMediaSample *pIn, IMediaSample *pOut)
 			m_Decoder.reset(CreateDecoder(m_DecoderType));
 			if (!m_Decoder)
 				return E_UNEXPECTED;
+			m_Decoder->SetDownmixChannels(m_LatmDownmixChannels);
 			m_Decoder->Open();
 		}
 
@@ -356,14 +362,14 @@ HRESULT AudioDecoderFilter::Transform(IMediaSample *pIn, IMediaSample *pOut)
 			} else if ((m_StartTime >= 0)
 					&& (std::llabs(rtStart - m_StartTime) > MAX_JITTER)) {
 				LIBISDB_TRACE(
-					LIBISDB_STR("Resync audio stream time (%lld -> %lld [%f])\n"),
+					LIBISDB_STR("Resync audio stream time ({} -> {} [{}])\n"),
 					m_StartTime, rtStart,
 					static_cast<double>(rtStart - m_StartTime) / static_cast<double>(REFERENCE_TIME_SECOND));
 				m_StartTime = rtStart;
 			}
 		}
 		if ((m_StartTime < 0) || m_Discontinuity) {
-			LIBISDB_TRACE(LIBISDB_STR("Initialize audio stream time (%lld)\n"), rtStart);
+			LIBISDB_TRACE(LIBISDB_STR("Initialize audio stream time ({})\n"), rtStart);
 			m_StartTime = rtStart;
 		}
 	}
@@ -397,20 +403,36 @@ HRESULT AudioDecoderFilter::Transform(IMediaSample *pIn, IMediaSample *pOut)
 			if (FrameInfo.Discontinuity)
 				m_Discontinuity = true;
 
+			// レンダラの繋ぎ直し中は出力を捨てる(SetLatmDownmixChannels()参照)
+			if (m_HoldOutput.load()) {
+				hr = S_OK;
+				continue;
+			}
+
 			SampleInfo.MediaTypeChanged = false;
 
 			hr = OnFrame(FrameInfo.pData, FrameInfo.SampleCount, FrameInfo.Info, &SampleInfo);
 		}
 
 		if (SUCCEEDED(hr)) {
+			LIBISDB_TRACE(
+				LIBISDB_STR("[DIAG] MediaTypeChanged={} SampleCount={} Channels={}\n"),
+				SampleInfo.MediaTypeChanged, FrameInfo.SampleCount, FrameInfo.Info.ChannelCount);
+
 			if (SampleInfo.MediaTypeChanged) {
 				hr = ReconnectOutput(SampleInfo.MediaBufferSize, SampleInfo.MediaType);
-				if (FAILED(hr))
+				LIBISDB_TRACE(LIBISDB_STR("[DIAG] ReconnectOutput() returned hr={:08x}\n"), static_cast<unsigned int>(hr));
+				if (FAILED(hr)) {
+					// 今繋がっているレンダラが新しいフォーマットを
+					// 受け付けなかった。レンダラごとの繋ぎ直しが
+					// 必要な場合があるため、上位(ViewerFilter)へ通知する
+					m_EventListenerList.CallEventListener(&EventListener::OnAudioFormatChangeRejected);
 					break;
+				}
 				LIBISDB_TRACE(LIBISDB_STR("出力メディアタイプを更新します。\n"));
 				hr = m_pOutput->SetMediaType(&SampleInfo.MediaType);
 				if (FAILED(hr)) {
-					LIBISDB_TRACE(LIBISDB_STR("出力メディアタイプを設定できません。(%08x)\n"), hr);
+					LIBISDB_TRACE(LIBISDB_STR("出力メディアタイプを設定できません。({:08x})\n"), hr);
 					break;
 				}
 				m_MediaType = SampleInfo.MediaType;
@@ -421,7 +443,7 @@ HRESULT AudioDecoderFilter::Transform(IMediaSample *pIn, IMediaSample *pOut)
 			IMediaSample *pOutSample = nullptr;
 			hr = m_pOutput->GetDeliveryBuffer(&pOutSample, nullptr, nullptr, 0);
 			if (FAILED(hr)) {
-				LIBISDB_TRACE(LIBISDB_STR("出力メディアサンプルを取得できません。(%08x)\n"), hr);
+				LIBISDB_TRACE(LIBISDB_STR("出力メディアサンプルを取得できません。({:08x})\n"), hr);
 				break;
 			}
 
@@ -432,7 +454,7 @@ HRESULT AudioDecoderFilter::Transform(IMediaSample *pIn, IMediaSample *pOut)
 			BYTE *pOutBuff = nullptr;
 			hr = pOutSample->GetPointer(&pOutBuff);
 			if (FAILED(hr)) {
-				LIBISDB_TRACE(LIBISDB_STR("出力サンプルのバッファを取得できません。(%08x)\n"), hr);
+				LIBISDB_TRACE(LIBISDB_STR("出力サンプルのバッファを取得できません。({:08x})\n"), hr);
 				pOutSample->Release();
 				break;
 			}
@@ -442,7 +464,7 @@ HRESULT AudioDecoderFilter::Transform(IMediaSample *pIn, IMediaSample *pOut)
 
 			if (m_StartTime >= 0) {
 				REFERENCE_TIME rtDuration, rtStart, rtEnd;
-				rtDuration = REFERENCE_TIME_SECOND * static_cast<LONGLONG>(SampleInfo.SampleCount) / FrameInfo.Info.Frequency;
+				rtDuration = REFERENCE_TIME_SECOND * static_cast<REFERENCE_TIME>(SampleInfo.SampleCount) / FrameInfo.Info.Frequency;
 				rtStart = m_StartTime;
 				m_StartTime += rtDuration;
 				// 音ずれ補正用時間シフト
@@ -483,15 +505,18 @@ HRESULT AudioDecoderFilter::Transform(IMediaSample *pIn, IMediaSample *pOut)
 			pOutSample->SetSyncPoint(TRUE);
 
 			hr = m_pOutput->Deliver(pOutSample);
-#ifdef _DEBUG
 			if (FAILED(hr)) {
-				LIBISDB_TRACE(LIBISDB_STR("サンプルを送信できません。(%08x)\n"), hr);
+				LIBISDB_TRACE(
+					LIBISDB_STR("[DIAG] m_pOutput->Deliver() failed hr={:08x} (Channels={}, Freq={}, SampleSize={})\n"),
+					static_cast<unsigned int>(hr), pOutSample->GetActualDataLength(),
+					FrameInfo.Info.Frequency, m_OutData.GetSize());
+#ifdef _DEBUG
 				if (m_Passthrough && !m_PassthroughError) {
 					m_PassthroughError = true;
 					m_EventListenerList.CallEventListener(&EventListener::OnSPDIFPassthroughError, hr);
 				}
-			}
 #endif
+			}
 			pOutSample->Release();
 			if (FAILED(hr))
 				break;
@@ -529,6 +554,7 @@ bool AudioDecoderFilter::SetDecoderType(DecoderType Type)
 		if (!pDecoder)
 			return false;
 		m_Decoder.reset(pDecoder);
+		m_Decoder->SetDownmixChannels(m_LatmDownmixChannels);
 		m_Decoder->Open();
 	}
 
@@ -564,6 +590,7 @@ uint8_t AudioDecoderFilter::GetOutputChannelCount() const
 }
 
 
+
 bool AudioDecoderFilter::GetAudioInfo(ReturnArg<AudioInfo> Info) const
 {
 	CAutoLock AutoLock(&m_cPropLock);
@@ -584,7 +611,9 @@ bool AudioDecoderFilter::SetDualMonoMode(DualMonoMode Mode)
 	case DualMonoMode::Main:
 	case DualMonoMode::Sub:
 	case DualMonoMode::Both:
-		LIBISDB_TRACE(LIBISDB_STR("AudioDecoderFilter::SetDualMonoMode() : Mode %d\n"), Mode);
+		LIBISDB_TRACE(
+			LIBISDB_STR("AudioDecoderFilter::SetDualMonoMode() : Mode {}\n"),
+			static_cast<std::underlying_type_t<DualMonoMode>>(Mode));
 		m_DualMonoMode = Mode;
 		if (m_DualMono)
 			SelectDualMonoStereoMode();
@@ -604,7 +633,9 @@ bool AudioDecoderFilter::SetStereoMode(StereoMode Mode)
 	case StereoMode::Left:
 	case StereoMode::Right:
 		m_StereoMode = Mode;
-		LIBISDB_TRACE(LIBISDB_STR("AudioDecoderFilter::SetStereoMode() : Stereo mode %d\n"), Mode);
+		LIBISDB_TRACE(
+			LIBISDB_STR("AudioDecoderFilter::SetStereoMode() : Stereo mode {}\n"),
+			static_cast<std::underlying_type_t<StereoMode>>(Mode));
 		return true;
 	}
 
@@ -617,6 +648,136 @@ bool AudioDecoderFilter::SetDownMixSurround(bool DownMix)
 	CAutoLock AutoLock(&m_cPropLock);
 
 	m_DownMixSurround = DownMix;
+	return true;
+}
+
+
+bool AudioDecoderFilter::SetLatmDownmixChannels(int Channels)
+{
+	// 診断用: この設定がいつ(グラフ構築のどの段階で)呼ばれているかを
+	// 確認するための出力。原因が分かったら削除して良い
+	{
+		wchar_t szBuff[128];
+		swprintf_s(szBuff, L"[LatmSpatial] SetLatmDownmixChannels(%d) called\n", Channels);
+		::OutputDebugStringW(szBuff);
+	}
+
+	if ((Channels != 8) && (Channels != 6) && (Channels != 2) && (Channels != 0))
+		return false;
+
+	bool NeedRendererCheck = (Channels == 0);
+
+	{
+		CAutoLock AutoLock(&m_cPropLock);
+
+		// 今「22.2ch(24ch)用」の出力(空間オーディオ用レンダラ)が接続されている
+		// 状態から、24ch以外へ変更される場合も、レンダラの再確認が必要。
+		// (以前は、2chへ変更した時に出力形式の「仮の値」だけが2chへ上書きされ、
+		//  ProcessPCM()が「形式は変わっていない」と判断してしまい、24chのまま
+		//  接続されているレンダラへ2chのデータが送られ続けていた。
+		//  24chとして読まれた2chデータは約12倍の速さで再生されるため、
+		//  甲高くて聞き取れない音になっていた)
+		if ((Channels != 0) && (m_pOutput != nullptr) && m_pOutput->IsConnected()) {
+			const CMediaType &Connected = m_pOutput->CurrentMediaType();
+			if ((*Connected.FormatType() == FORMAT_WaveFormatEx)
+					&& (Connected.FormatLength() >= sizeof(WAVEFORMATEX))
+					&& (reinterpret_cast<const WAVEFORMATEX *>(Connected.Format())->nChannels == 24))
+				NeedRendererCheck = true;
+		}
+
+		// 繋ぎ直しが終わるまで、デコーダの出力は送らずに捨てる
+		if (NeedRendererCheck)
+			m_HoldOutput = true;
+
+		m_LatmDownmixChannels = Channels;
+		if (m_Decoder)
+			m_Decoder->SetDownmixChannels(m_LatmDownmixChannels);
+
+	// 出力ピンの「仮の」メディアタイプ(GetMediaType()が、実際のチャンネル数が
+	// まだ判明していない最初の接続時に提案する内容)を、ここで更新しておく。
+	// これをしないと、最初の接続では常に2ch(コンストラクタでの初期値)が
+	// 提案されてしまい、「ダウンミックスしない」設定でも通常の音声レンダラが
+	// 先に選ばれてしまう(22.2chと判明するのは最初の1フレームをデコードした
+	// 後のため、SpatialAudioRendererが接続の候補にすら上がれなくなる)。
+	// ※この変更を反映するには、チャンネルの再選局等でグラフを再構築する
+	//   必要がある(接続済みのグラフへ即座に反映されるわけではない)
+	if (Channels == 0) {
+		// 22.2ch(24ch)。SpatialAudioRendererが受け付ける形式に合わせる
+		m_MediaType.InitMediaType();
+		m_MediaType.SetType(&MEDIATYPE_Audio);
+		m_MediaType.SetSubtype(&MEDIASUBTYPE_PCM);
+		m_MediaType.SetTemporalCompression(FALSE);
+		m_MediaType.SetSampleSize(0);
+		m_MediaType.SetFormatType(&FORMAT_WaveFormatEx);
+
+		WAVEFORMATEXTENSIBLE *pWaveInfo = reinterpret_cast<WAVEFORMATEXTENSIBLE *>(
+			m_MediaType.AllocFormatBuffer(sizeof(WAVEFORMATEXTENSIBLE)));
+		if (pWaveInfo != nullptr) {
+			pWaveInfo->Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
+			pWaveInfo->Format.nChannels = 24;
+			pWaveInfo->Format.nSamplesPerSec = FREQUENCY;
+			pWaveInfo->Format.wBitsPerSample = 16;
+			pWaveInfo->Format.nBlockAlign =
+				pWaveInfo->Format.wBitsPerSample * pWaveInfo->Format.nChannels / 8;
+			pWaveInfo->Format.nAvgBytesPerSec =
+				pWaveInfo->Format.nSamplesPerSec * pWaveInfo->Format.nBlockAlign;
+			pWaveInfo->Format.cbSize = sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX);
+			// Windows標準のdwChannelMaskには22.2ch全chぶんの定義が無いため、
+			// 0(チャンネルマスク未指定)を指定する
+			pWaveInfo->dwChannelMask = 0;
+			pWaveInfo->SubFormat = MEDIASUBTYPE_PCM;
+			pWaveInfo->Samples.wValidBitsPerSample = pWaveInfo->Format.wBitsPerSample;
+		}
+	} else {
+		// 6ch/8ch/2chダウンミックス。2chを仮のフォーマットとしておく
+		// (SpatialAudioRendererはこの形式では接続候補にならず、
+		//  通常のレンダラが選ばれた後、実際のチャンネル数判明時に
+		//  ReconnectOutput()で6ch/8chへ再接続される。これは元々の
+		//  7.1ch/5.1chダウンミックスと同じ、既に動作確認済みの経路。
+		//  Channels==2(2chダウンミックス)の場合は、この仮フォーマットが
+		//  そのまま最終フォーマットと一致するため、再接続は発生しない)
+		m_MediaType.InitMediaType();
+		m_MediaType.SetType(&MEDIATYPE_Audio);
+		m_MediaType.SetSubtype(&MEDIASUBTYPE_PCM);
+		m_MediaType.SetTemporalCompression(FALSE);
+		m_MediaType.SetSampleSize(0);
+		m_MediaType.SetFormatType(&FORMAT_WaveFormatEx);
+
+		WAVEFORMATEX *pWaveInfo = reinterpret_cast<WAVEFORMATEX *>(
+			m_MediaType.AllocFormatBuffer(sizeof(WAVEFORMATEX)));
+		if (pWaveInfo != nullptr) {
+			pWaveInfo->wFormatTag = WAVE_FORMAT_PCM;
+			pWaveInfo->nChannels = 2;
+			pWaveInfo->nSamplesPerSec = FREQUENCY;
+			pWaveInfo->wBitsPerSample = 16;
+			pWaveInfo->nBlockAlign = pWaveInfo->wBitsPerSample * pWaveInfo->nChannels / 8;
+			pWaveInfo->nAvgBytesPerSec = pWaveInfo->nSamplesPerSec * pWaveInfo->nBlockAlign;
+			pWaveInfo->cbSize = 0;
+		}
+	}
+	}
+
+	if (NeedRendererCheck) {
+		// 「ダウンミックスしない」が選ばれた。今接続されているレンダラが
+		// 22.2ch用のものでない可能性があるため(特に、グラフ構築時に
+		// まだこの設定が適用されていなかった場合)、上位(ViewerFilter)へ
+		// 繋ぎ直しを促す。ViewerFilter側で「今のレンダラが適切かどうか」を
+		// 判断して、不要であれば繋ぎ直しは行わない
+		m_EventListenerList.CallEventListener(&EventListener::OnAudioRendererRecheckRequested);
+		m_HoldOutput = false;
+	}
+
+	return true;
+}
+
+
+bool AudioDecoderFilter::SetLatmDownmixPresetName(const LibISDB::CharType *pName)
+{
+	CAutoLock AutoLock(&m_cPropLock);
+
+	if (m_Decoder)
+		m_Decoder->SetDownmixPresetName(pName);
+
 	return true;
 }
 
@@ -716,7 +877,7 @@ bool AudioDecoderFilter::SetDelay(LONGLONG Delay)
 {
 	CAutoLock AutoLock(&m_cPropLock);
 
-	LIBISDB_TRACE(LIBISDB_STR("AudioDecoderFilter::SetDelay() : %lld\n"), Delay);
+	LIBISDB_TRACE(LIBISDB_STR("AudioDecoderFilter::SetDelay() : {}\n"), Delay);
 
 	m_DelayAdjustment += Delay - m_Delay;
 	m_Delay = Delay;
@@ -752,7 +913,9 @@ HRESULT AudioDecoderFilter::OnFrame(
 	const AudioDecoder::AudioInfo &Info,
 	FrameSampleInfo *pSampleInfo)
 {
-	if (Info.ChannelCount != 1 && Info.ChannelCount != 2 && Info.ChannelCount != 6)
+	if (Info.ChannelCount != 1 && Info.ChannelCount != 2
+			&& Info.ChannelCount != 6 && Info.ChannelCount != 8
+			&& Info.ChannelCount != 24)
 		return E_FAIL;
 
 	const bool DualMono = (Info.ChannelCount == 2 && Info.DualMono);
@@ -762,11 +925,17 @@ HRESULT AudioDecoderFilter::OnFrame(
 		if (m_SPDIFOptions.Mode == SPDIFMode::Passthrough) {
 			Passthrough = true;
 		} else if (m_SPDIFOptions.Mode == SPDIFMode::Auto) {
-			UINT ChannelFlag;
+			UINT ChannelFlag = 0;
 			if (DualMono) {
 				ChannelFlag = SPDIFOptions::Channel_DualMono;
 			} else {
-				switch (Info.ChannelCount) {
+				// 「ダウンミックスしない」時は、元が8ch以下の音声も24chに
+				// 拡張されて渡されるため、その場合は元のチャンネル数で判定する
+				int FlagChannels = Info.ChannelCount;
+				if ((Info.ChannelCount == 24) && (Info.OriginalChannelCount > 0)
+						&& (Info.OriginalChannelCount <= 8))
+					FlagChannels = Info.OriginalChannelCount;
+				switch (FlagChannels) {
 				case 1: ChannelFlag = SPDIFOptions::Channel_Mono;     break;
 				case 2: ChannelFlag = SPDIFOptions::Channel_Stereo;   break;
 				case 6: ChannelFlag = SPDIFOptions::Channel_Surround; break;
@@ -809,16 +978,56 @@ HRESULT AudioDecoderFilter::ProcessPCM(
 	const AudioDecoder::AudioInfo &Info,
 	FrameSampleInfo *pSampleInfo)
 {
-	const bool Surround = (Info.ChannelCount == 6 && !m_DownMixSurround);
-	const int OutChannels = Surround ? 6 : 2;
+	// 22.2ch(24ch、ダウンミックスしない設定でのAAC-LATM生データ)は、
+	// m_DownMixSurround(2chへの折り込み)設定に関わらず常にそのまま
+	// (Surround扱い)で後段へ渡す。5.1ch/7.1ch用の折り込み処理は
+	// この22.2ch生データには対応していないため
+	//
+	// 「ダウンミックスしない」(m_LatmDownmixChannels == 0)の時は、
+	// 空間オーディオ用レンダラ(24ch/48kHz/16bitしか受け付けない)へ
+	// 出力する前提のため、22.2ch以外のデコーダ出力(通常のステレオ/
+	// 5.1ch等。22.2chとは別のデコーダで処理される音声トラック)も
+	// 24chの配置へ拡張して出力する。出力形式を24chのまま変えないことで、
+	// 音声トラックを切り替えた時に、レンダラが受け付けられない形式への
+	// 変更が起きない(受け付けられないと、レンダラのピンが実行時エラー
+	// 状態になり、グラフを再初期化するまで無音になる)
+	const bool Expand24 =
+		(m_LatmDownmixChannels == 0)
+		&& (Info.ChannelCount == 1 || Info.ChannelCount == 2
+			|| Info.ChannelCount == 6 || Info.ChannelCount == 8);
+	const bool Surround =
+		((Info.ChannelCount == 6 || Info.ChannelCount == 8) && !m_DownMixSurround)
+		|| (Info.ChannelCount == 24)
+		|| Expand24;
+	const int OutChannels = Expand24 ? 24 : (Surround ? Info.ChannelCount : 2);
 
 	// メディアタイプの更新
-	bool MediaTypeChanged = false;
 	WAVEFORMATEX *pwfx = reinterpret_cast<WAVEFORMATEX *>(m_MediaType.Format());
+
+	// m_MediaTypeは「次に提案する/期待する」形式で、設定変更等によって、
+	// 実際に接続されている形式とは異なる値に書き換えられていることがある。
+	// そのため、実際に接続されている形式とも比較する(異なっていれば、
+	// 通常の形式変更として扱い、下流へ形式変更を通知する)
+	bool ConnectedMismatch = false;
+	if ((m_pOutput != nullptr) && m_pOutput->IsConnected()) {
+		const CMediaType &Connected = m_pOutput->CurrentMediaType();
+		if ((*Connected.FormatType() == FORMAT_WaveFormatEx)
+				&& (Connected.FormatLength() >= sizeof(WAVEFORMATEX))) {
+			const WAVEFORMATEX *pcwfx = reinterpret_cast<const WAVEFORMATEX *>(Connected.Format());
+			ConnectedMismatch =
+				(pcwfx->nChannels != OutChannels)
+				|| (pcwfx->nSamplesPerSec != static_cast<DWORD>(Info.Frequency))
+				|| (!Surround && (pcwfx->wFormatTag != WAVE_FORMAT_PCM))
+				|| (Surround && (pcwfx->wFormatTag != WAVE_FORMAT_EXTENSIBLE));
+		}
+	}
+
 	if ((*m_MediaType.FormatType() != FORMAT_WaveFormatEx)
 			|| (!Surround && (pwfx->wFormatTag != WAVE_FORMAT_PCM))
 			|| (Surround && (pwfx->wFormatTag != WAVE_FORMAT_EXTENSIBLE))
-			|| (pwfx->nSamplesPerSec != Info.Frequency)) {
+			|| (pwfx->nChannels != OutChannels)
+			|| (pwfx->nSamplesPerSec != Info.Frequency)
+			|| ConnectedMismatch) {
 		CMediaType &mt = pSampleInfo->MediaType;
 		mt.SetType(&MEDIATYPE_Audio);
 		mt.SetSubtype(&MEDIASUBTYPE_PCM);
@@ -835,12 +1044,30 @@ HRESULT AudioDecoderFilter::ProcessPCM(
 		} else {
 			WAVEFORMATEXTENSIBLE *pExtensible = reinterpret_cast<WAVEFORMATEXTENSIBLE *>(pwfx);
 			pExtensible->Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
-			pExtensible->Format.nChannels = 6;
+			pExtensible->Format.nChannels = static_cast<WORD>(OutChannels);
 			pExtensible->Format.cbSize  = sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX);
-			pExtensible->dwChannelMask =
-				SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT |
-				SPEAKER_FRONT_CENTER | SPEAKER_LOW_FREQUENCY |
-				SPEAKER_BACK_LEFT | SPEAKER_BACK_RIGHT;
+			if (OutChannels == 24) {
+				// 22.2ch。Windows標準のdwChannelMaskには22.2ch全chぶんの
+				// 定義(下層やLFE2等)が存在しないため、0(チャンネルマスク
+				// 未指定。チャンネル順序のみで解釈する)を指定する。
+				// 一般的なオーディオデバイスはこの24chをそのまま受け付け
+				// られないため、実質的に22.2ch対応の専用レンダラ
+				// (Windows空間オーディオ用等)を介する用途を想定している
+				pExtensible->dwChannelMask = 0;
+			} else if (OutChannels == 8) {
+				// 7.1ch(FL,FR,FC,LFE,BL,BR,SL,SR)
+				pExtensible->dwChannelMask =
+					SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT |
+					SPEAKER_FRONT_CENTER | SPEAKER_LOW_FREQUENCY |
+					SPEAKER_BACK_LEFT | SPEAKER_BACK_RIGHT |
+					SPEAKER_SIDE_LEFT | SPEAKER_SIDE_RIGHT;
+			} else {
+				// 5.1ch(FL,FR,FC,LFE,BL,BR)
+				pExtensible->dwChannelMask =
+					SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT |
+					SPEAKER_FRONT_CENTER | SPEAKER_LOW_FREQUENCY |
+					SPEAKER_BACK_LEFT | SPEAKER_BACK_RIGHT;
+			}
 			pExtensible->Samples.wValidBitsPerSample = 16;
 			pExtensible->SubFormat = MEDIASUBTYPE_PCM;
 		}
@@ -859,8 +1086,67 @@ HRESULT AudioDecoderFilter::ProcessPCM(
 		return E_OUTOFMEMORY;
 	uint8_t *pOutBuff = pSampleInfo->pData->GetData();
 
+	// 24chへ拡張する場合の、拡張前(ステレオ/5.1ch/7.1ch)のチャンネル数
+	int NarrowChannels = 0;
+
 	if (pData != nullptr) {
-		size_t OutSize;
+		size_t OutSize = 0;
+
+		if (Expand24) {
+			// まず通常の経路(モノラル→ステレオ、二重音声/ステレオモードの
+			// 選択、5.1chのチャンネル並び替えや折り込み等)で処理し、
+			// その結果を24chの配置へ置く。24chのうち、元の音声に
+			// 存在しないchは無音。
+			const int16_t *pSrc = reinterpret_cast<const int16_t *>(pData);
+			switch (Info.ChannelCount) {
+			case 1:
+			case 2:
+				NarrowChannels = 2;
+				break;
+			case 6:
+				NarrowChannels = m_DownMixSurround ? 2 : 6;
+				break;
+			case 8:
+				NarrowChannels = m_DownMixSurround ? 2 : 8;
+				break;
+			}
+			m_ExpandWork.resize(Samples * NarrowChannels);
+			int16_t *pWork = m_ExpandWork.data();
+
+			switch (Info.ChannelCount) {
+			case 1:
+				MonoToStereo(pWork, pSrc, Samples);
+				break;
+			case 2:
+				DownMixStereo(pWork, pSrc, Samples);
+				break;
+			case 6:
+				if (m_DownMixSurround)
+					DownMixSurround(pWork, pSrc, Samples);
+				else
+					MapSurroundChannels(pWork, pSrc, Samples);
+				break;
+			case 8:
+				if (m_DownMixSurround)
+					DownMixSurround8(pWork, pSrc, Samples);
+				else
+					MapSurround8Channels(pWork, pSrc, Samples);
+				break;
+			}
+
+			// 24chの並び(LatmSpatial::RawChannelOrder)の先頭6chは
+			// FL,FR,FC,LFE,BL,BR、SL/SRは9,10番目
+			static const int Slot8ch[8] = {0, 1, 2, 3, 4, 5, 9, 10};
+			int16_t *pDst = reinterpret_cast<int16_t *>(pOutBuff);
+			std::memset(pDst, 0, BuffSize);
+			for (size_t i = 0; i < Samples; i++) {
+				for (int c = 0; c < NarrowChannels; c++) {
+					const int Slot = (NarrowChannels == 8) ? Slot8ch[c] : c;
+					pDst[i * 24 + Slot] = pWork[i * NarrowChannels + c];
+				}
+			}
+			OutSize = Samples * 24 * sizeof(int16_t);
+		} else
 
 		// ダウンミックス
 		switch (Info.ChannelCount) {
@@ -891,12 +1177,39 @@ HRESULT AudioDecoderFilter::ProcessPCM(
 					Samples);
 			}
 			break;
+
+		case 8:
+			// 22.2ch等をデコーダ側(AACLATMDecoder_FDK)で7.1ch(8ch)まで
+			// 落とし込んだ結果。ここでは更に5.1ch用のチャンネルマップや
+			// ダウンミックス行列は流用せず、7.1ch専用の経路を通す
+			if (Surround) {
+				OutSize = MapSurround8Channels(
+					reinterpret_cast<int16_t *>(pOutBuff),
+					reinterpret_cast<const int16_t *>(pData),
+					Samples);
+			} else {
+				OutSize = DownMixSurround8(
+					reinterpret_cast<int16_t *>(pOutBuff),
+					reinterpret_cast<const int16_t *>(pData),
+					Samples);
+			}
+			break;
+
+		case 24:
+			// 22.2ch。デコーダ側(AACLATMDecoder_Libav)が既に標準順序の
+			// 24chインターリーブPCMを生成しているため、ここでは折り込み・
+			// 並び替えを行わず、そのままコピーするだけで良い
+			// (OutSizeは他のcaseと同じく「バイト数」で返す約束になっている)
+			OutSize = Samples * 24 * sizeof(int16_t);
+			std::memcpy(pOutBuff, pData, OutSize);
+			break;
 		}
 
 		if (m_GainControl && (Info.ChannelCount < 6 || Surround)) {
+			const bool UseSurroundGain = Expand24 ? (NarrowChannels > 2) : Surround;
 			GainControl(
 				reinterpret_cast<int16_t *>(pOutBuff), OutSize / sizeof(int16_t),
-				Surround ? m_SurroundGain : m_Gain);
+				UseSurroundGain ? m_SurroundGain : m_Gain);
 		}
 	} else {
 		std::memset(pOutBuff, 0, BuffSize);
@@ -917,7 +1230,7 @@ HRESULT AudioDecoderFilter::ProcessPCM(
 HRESULT AudioDecoderFilter::ProcessSPDIF(
 	const AudioDecoder::AudioInfo &Info, FrameSampleInfo *pSampleInfo)
 {
-	static const int PREAMBLE_SIZE = sizeof(WORD) * 4;
+	constexpr int PREAMBLE_SIZE = sizeof(WORD) * 4;
 
 	AudioDecoder::SPDIFFrameInfo FrameInfo;
 	if (!m_Decoder->GetSPDIFFrameInfo(&FrameInfo))
@@ -928,7 +1241,7 @@ HRESULT AudioDecoderFilter::ProcessSPDIF(
 	const int PacketSize = FrameInfo.SamplesPerFrame * 4;
 	if (DataBurstSize > PacketSize) {
 		LIBISDB_TRACE(
-			LIBISDB_STR("S/PDIFビットレートが不正です。(Frame size %d / Data-burst size %d / Packet size %d)\n"),
+			LIBISDB_STR("S/PDIFビットレートが不正です。(Frame size {} / Data-burst size {} / Packet size {})\n"),
 			FrameSize, DataBurstSize, PacketSize);
 		return E_FAIL;
 	}
@@ -937,7 +1250,7 @@ HRESULT AudioDecoderFilter::ProcessSPDIF(
 	static bool First = true;
 	if (First) {
 		LIBISDB_TRACE(
-			LIBISDB_STR("S/PDIF出力開始(Frame size %d / Data-burst size %d / Packet size %d)\n"),
+			LIBISDB_STR("S/PDIF出力開始(Frame size {} / Data-burst size {} / Packet size {})\n"),
 			FrameSize, DataBurstSize, PacketSize);
 		First = false;
 	}
@@ -990,18 +1303,18 @@ HRESULT AudioDecoderFilter::ProcessSPDIF(
 	BYTE *pOutBuff = pSampleInfo->pData->GetData();
 	WORD *pWordData = reinterpret_cast<WORD*>(pOutBuff);
 	// Burst-preamble
-	pWordData[0] = 0xF872;						// Pa(Sync word 1)
-	pWordData[1] = 0x4E1F;						// Pb(Sync word 2)
-	pWordData[2] = FrameInfo.Pc;				// Pc(Burst-info)
-//	pWordData[3] = ((FrameSize + 1) & ~1) * 8;	// Pd(Length-code)
-	pWordData[3] = FrameSize * 8;				// Pd(Length-code)
+	pWordData[0] = 0xF872;        // Pa(Sync word 1)
+	pWordData[1] = 0x4E1F;        // Pb(Sync word 2)
+	pWordData[2] = FrameInfo.Pc;  // Pc(Burst-info)
+	//pWordData[3] = ((FrameSize + 1) & ~1) * 8; // Pd(Length-code)
+	pWordData[3] = FrameSize * 8; // Pd(Length-code)
 	// Burst-payload
 	int PayloadSize = m_Decoder->GetSPDIFBurstPayload(
 			&pOutBuff[PREAMBLE_SIZE],
 			pSampleInfo->pData->GetBufferSize() - PREAMBLE_SIZE);
 	if ((PayloadSize < 1) || (PREAMBLE_SIZE + PayloadSize > PacketSize)) {
 		LIBISDB_TRACE(
-			LIBISDB_STR("S/PDIF Burst-payload サイズが不正です。(Packet size %d / Payload size %d)\n"),
+			LIBISDB_STR("S/PDIF Burst-payload サイズが不正です。(Packet size {} / Payload size {})\n"),
 			PacketSize, PayloadSize);
 		return E_FAIL;
 	}
@@ -1027,17 +1340,17 @@ HRESULT AudioDecoderFilter::ReconnectOutput(long BufferSize, const CMediaType &m
 	IMemInputPin *pMemInputPin = nullptr;
 	hr = pPin->QueryInterface(IID_IMemInputPin, reinterpret_cast<void**>(&pMemInputPin));
 	if (FAILED(hr)) {
-		LIBISDB_TRACE(LIBISDB_STR("IMemInputPinインターフェースが取得できません。(%08x)\n"), hr);
+		LIBISDB_TRACE(LIBISDB_STR("IMemInputPinインターフェースが取得できません。({:08x})\n"), hr);
 	} else {
 		IMemAllocator *pAllocator = nullptr;
 		hr = pMemInputPin->GetAllocator(&pAllocator);
 		if (FAILED(hr)) {
-			LIBISDB_TRACE(LIBISDB_STR("IMemAllocatorインターフェースが取得できません。(%08x)\n"), hr);
+			LIBISDB_TRACE(LIBISDB_STR("IMemAllocatorインターフェースが取得できません。({:08x})\n"), hr);
 		} else {
 			ALLOCATOR_PROPERTIES Props;
 			hr = pAllocator->GetProperties(&Props);
 			if (FAILED(hr)) {
-				LIBISDB_TRACE(LIBISDB_STR("IMemAllocatorのプロパティが取得できません。(%08x)\n"), hr);
+				LIBISDB_TRACE(LIBISDB_STR("IMemAllocatorのプロパティが取得できません。({:08x})\n"), hr);
 			} else {
 				if ((mt != m_pOutput->CurrentMediaType())
 						|| (Props.cBuffers < NUM_SAMPLE_BUFFERS)
@@ -1049,7 +1362,7 @@ HRESULT AudioDecoderFilter::ReconnectOutput(long BufferSize, const CMediaType &m
 
 						Props.cBuffers = NUM_SAMPLE_BUFFERS;
 						Props.cbBuffer = BufferSize * 3 / 2;
-						LIBISDB_TRACE(LIBISDB_STR("バッファサイズを設定します。(%ld bytes)\n"), Props.cbBuffer);
+						LIBISDB_TRACE(LIBISDB_STR("バッファサイズを設定します。({} bytes)\n"), Props.cbBuffer);
 						if (SUCCEEDED(hr = m_pOutput->DeliverBeginFlush())
 								&& SUCCEEDED(hr = m_pOutput->DeliverEndFlush())
 								&& SUCCEEDED(hr = pAllocator->Decommit())
@@ -1057,7 +1370,7 @@ HRESULT AudioDecoderFilter::ReconnectOutput(long BufferSize, const CMediaType &m
 								&& SUCCEEDED(hr = pAllocator->Commit())) {
 							if ((ActualProps.cBuffers < Props.cBuffers)
 									|| (ActualProps.cbBuffer < BufferSize)) {
-								LIBISDB_TRACE(LIBISDB_STR("バッファサイズの要求が受け付けられません。(%ld / %ld)\n"),
+								LIBISDB_TRACE(LIBISDB_STR("バッファサイズの要求が受け付けられません。({} / {})\n"),
 										  ActualProps.cbBuffer, Props.cbBuffer);
 								hr = E_FAIL;
 								NotifyEvent(EC_ERRORABORT, hr, 0);
@@ -1066,7 +1379,7 @@ HRESULT AudioDecoderFilter::ReconnectOutput(long BufferSize, const CMediaType &m
 								hr = S_OK;
 							}
 						} else {
-							LIBISDB_TRACE(LIBISDB_STR("ピンの再接続ができません。(%08x)\n"), hr);
+							LIBISDB_TRACE(LIBISDB_STR("ピンの再接続ができません。({:08x})\n"), hr);
 						}
 					}
 				} else {
@@ -1123,8 +1436,8 @@ size_t AudioDecoderFilter::MonoToStereo(int16_t *pDst, const int16_t *pSrc, size
 
 	while (p < pEnd) {
 		int16_t Value = *p++;
-		*q++ = Value;	// L
-		*q++ = Value;	// R
+		*q++ = Value; // L
+		*q++ = Value; // R
 	}
 
 	return Samples * (sizeof(int16_t) * 2);
@@ -1173,8 +1486,8 @@ size_t AudioDecoderFilter::DownMixStereo(int16_t *pDst, const int16_t *pSrc, siz
 
 			while (p < pEnd) {
 				int16_t Value = *p;
-				*q++ = Value;	// L
-				*q++ = Value;	// R
+				*q++ = Value; // L
+				*q++ = Value; // R
 				p += 2;
 			}
 		} else {
@@ -1209,8 +1522,8 @@ size_t AudioDecoderFilter::DownMixStereo(int16_t *pDst, const int16_t *pSrc, siz
 
 			while (p < pEnd) {
 				int16_t Value = p[1];
-				*q++ = Value;	// L
-				*q++ = Value;	// R
+				*q++ = Value; // L
+				*q++ = Value; // R
 				p += 2;
 			}
 		}
@@ -1241,7 +1554,7 @@ size_t AudioDecoderFilter::DownMixSurround(int16_t *pDst, const int16_t *pSrc, s
 				Data[i] = static_cast<double>(pSrc[Pos * 6 + ChannelMap[i]]);
 
 			for (int i = 0; i < 2; i++) {
-				int Value = static_cast<int>((
+				const int Value = static_cast<int>((
 					Data[0] * m_DownMixMatrix.Matrix[i][0] +
 					Data[1] * m_DownMixMatrix.Matrix[i][1] +
 					Data[2] * m_DownMixMatrix.Matrix[i][2] +
@@ -1258,14 +1571,14 @@ size_t AudioDecoderFilter::DownMixSurround(int16_t *pDst, const int16_t *pSrc, s
 		m_Decoder->GetDownmixInfo(&Info);
 
 		for (size_t Pos = 0; Pos < Samples; Pos++) {
-			int Left = static_cast<int>((
+			const int Left = static_cast<int>((
 				static_cast<double>(pSrc[Pos * 6 + ChannelMap[AudioDecoder::CHANNEL_6_FL ]]) * Info.Front +
 				static_cast<double>(pSrc[Pos * 6 + ChannelMap[AudioDecoder::CHANNEL_6_BL ]]) * Info.Rear +
 				static_cast<double>(pSrc[Pos * 6 + ChannelMap[AudioDecoder::CHANNEL_6_FC ]]) * Info.Center +
 				static_cast<double>(pSrc[Pos * 6 + ChannelMap[AudioDecoder::CHANNEL_6_LFE]]) * Info.LFE
 				) * Level);
 
-			int Right = static_cast<int>((
+			const int Right = static_cast<int>((
 				static_cast<double>(pSrc[Pos * 6 + ChannelMap[AudioDecoder::CHANNEL_6_FR ]]) * Info.Front +
 				static_cast<double>(pSrc[Pos * 6 + ChannelMap[AudioDecoder::CHANNEL_6_BR ]]) * Info.Rear +
 				static_cast<double>(pSrc[Pos * 6 + ChannelMap[AudioDecoder::CHANNEL_6_FC ]]) * Info.Center +
@@ -1300,7 +1613,7 @@ size_t AudioDecoderFilter::MapSurroundChannels(int16_t *pDst, const int16_t *pSr
 				Data[j] = static_cast<double>(pSrc[i * 6 + ChannelMap[j]]);
 
 			for (int j = 0; j < 6; j++) {
-				int Value = static_cast<int>(
+				const int Value = static_cast<int>(
 					Data[0] * m_MixingMatrix.Matrix[j][0] +
 					Data[1] * m_MixingMatrix.Matrix[j][1] +
 					Data[2] * m_MixingMatrix.Matrix[j][2] +
@@ -1332,9 +1645,78 @@ size_t AudioDecoderFilter::MapSurroundChannels(int16_t *pDst, const int16_t *pSr
 }
 
 
+size_t AudioDecoderFilter::MapSurround8Channels(int16_t *pDst, const int16_t *pSrc, size_t Samples)
+{
+	// 7.1ch(8ch)のチャンネル並び替え。22.2ch等をデコーダ側(AACLATMDecoder_FDK)
+	// で7.1chへダウンミックスした結果を、出力用の順序(FL,FR,FC,LFE,BL,BR,SL,SR)
+	// へ揃える。5.1ch用のカスタムマトリックス(m_MixingMatrix)は6ch専用なので
+	// ここでは流用せず、常にデフォルトの並び替えのみを行う
+	int ChannelMap[8];
+
+	if (m_Decoder->GetChannelMap(8, ChannelMap)) {
+		for (size_t i = 0 ; i < Samples ; i++) {
+			pDst[i * 8 + 0] = pSrc[i * 8 + ChannelMap[AudioDecoder::CHANNEL_8_FL]];
+			pDst[i * 8 + 1] = pSrc[i * 8 + ChannelMap[AudioDecoder::CHANNEL_8_FR]];
+			pDst[i * 8 + 2] = pSrc[i * 8 + ChannelMap[AudioDecoder::CHANNEL_8_FC]];
+			pDst[i * 8 + 3] = pSrc[i * 8 + ChannelMap[AudioDecoder::CHANNEL_8_LFE]];
+			pDst[i * 8 + 4] = pSrc[i * 8 + ChannelMap[AudioDecoder::CHANNEL_8_BL]];
+			pDst[i * 8 + 5] = pSrc[i * 8 + ChannelMap[AudioDecoder::CHANNEL_8_BR]];
+			pDst[i * 8 + 6] = pSrc[i * 8 + ChannelMap[AudioDecoder::CHANNEL_8_SL]];
+			pDst[i * 8 + 7] = pSrc[i * 8 + ChannelMap[AudioDecoder::CHANNEL_8_SR]];
+		}
+	} else {
+		std::memcpy(pDst, pSrc, Samples * 8 * sizeof(int16_t));
+	}
+
+	return Samples * (sizeof(int16_t) * 8);
+}
+
+
+size_t AudioDecoderFilter::DownMixSurround8(int16_t *pDst, const int16_t *pSrc, size_t Samples)
+{
+	// 7.1ch(8ch) → 2ch ダウンミックス
+	// (「サラウンドをダウンミックスする」設定が有効な場合に使用)
+
+	const double Level = m_GainControl ? m_SurroundGain : 1.0;
+	int ChannelMap[8];
+
+	if (!m_Decoder->GetChannelMap(8, ChannelMap)) {
+		for (int i = 0; i < 8; i++)
+			ChannelMap[i] = i;
+	}
+
+	AudioDecoder::DownmixInfo Info;
+	m_Decoder->GetDownmixInfo(&Info);
+
+	// サイドチャンネルはリアと同じ係数で扱う
+	for (size_t Pos = 0; Pos < Samples; Pos++) {
+		const int Left = static_cast<int>((
+			static_cast<double>(pSrc[Pos * 8 + ChannelMap[AudioDecoder::CHANNEL_8_FL ]]) * Info.Front +
+			static_cast<double>(pSrc[Pos * 8 + ChannelMap[AudioDecoder::CHANNEL_8_BL ]]) * Info.Rear +
+			static_cast<double>(pSrc[Pos * 8 + ChannelMap[AudioDecoder::CHANNEL_8_SL ]]) * Info.Rear +
+			static_cast<double>(pSrc[Pos * 8 + ChannelMap[AudioDecoder::CHANNEL_8_FC ]]) * Info.Center +
+			static_cast<double>(pSrc[Pos * 8 + ChannelMap[AudioDecoder::CHANNEL_8_LFE]]) * Info.LFE
+			) * Level);
+
+		const int Right = static_cast<int>((
+			static_cast<double>(pSrc[Pos * 8 + ChannelMap[AudioDecoder::CHANNEL_8_FR ]]) * Info.Front +
+			static_cast<double>(pSrc[Pos * 8 + ChannelMap[AudioDecoder::CHANNEL_8_BR ]]) * Info.Rear +
+			static_cast<double>(pSrc[Pos * 8 + ChannelMap[AudioDecoder::CHANNEL_8_SR ]]) * Info.Rear +
+			static_cast<double>(pSrc[Pos * 8 + ChannelMap[AudioDecoder::CHANNEL_8_FC ]]) * Info.Center +
+			static_cast<double>(pSrc[Pos * 8 + ChannelMap[AudioDecoder::CHANNEL_8_LFE]]) * Info.LFE
+			) * Level);
+
+		pDst[Pos * 2 + 0] = ClampSample16(Left);
+		pDst[Pos * 2 + 1] = ClampSample16(Right);
+	}
+
+	return Samples * (sizeof(int16_t) * 2);
+}
+
+
 void AudioDecoderFilter::GainControl(int16_t *pBuffer, size_t Samples, float Gain)
 {
-	static const int Factor = 0x1000;
+	constexpr int Factor = 0x1000;
 	const int Level = static_cast<int>(Gain * static_cast<float>(Factor));
 
 	if (Level != Factor) {
@@ -1343,7 +1725,7 @@ void AudioDecoderFilter::GainControl(int16_t *pBuffer, size_t Samples, float Gai
 		p = pBuffer;
 		pEnd= p + Samples;
 		while (p < pEnd) {
-			int Value = (static_cast<int>(*p) * Level) / Factor;
+			const int Value = (static_cast<int>(*p) * Level) / Factor;
 			*p++ = ClampSample16(Value);
 		}
 	}
@@ -1364,21 +1746,72 @@ AudioDecoder * AudioDecoderFilter::CreateDecoder(DecoderType Type)
 {
 	switch (Type) {
 	case DecoderType::AAC:
-#ifdef LIBISDB_USE_FAAD2
 		return new AACDecoder_FAAD2;
-#else
-		return new AACDecoder_FDK;
-#endif
 
 	case DecoderType::MPEGAudio:
 		return new MPEGAudioDecoder;
 
 	case DecoderType::AC3:
 		return new AC3Decoder;
+
+#ifdef LIBISDB_HAS_FDK_AAC
+	case DecoderType::FDK_AAC:
+		return new AACDecoder_FDK;
+
+	case DecoderType::AAC_LATM:
+		return new AACLATMDecoder_FDK;
+#endif
+
+#ifdef LIBISDB_HAS_LIBAV_AAC
+	case DecoderType::AAC_LATM_LIBAV:
+		return new AACLATMDecoder_Libav;
+#endif
+
 	}
 
 	return nullptr;
 }
 
 
-}	// namespace LibISDB::DirectShow
+bool AudioDecoderFilter::GetDecoderVersion(DecoderType Type, std::string *pVersion)
+{
+	if (pVersion == nullptr)
+		return false;
+
+	switch (Type) {
+	case DecoderType::AAC:
+		AACDecoder_FAAD2::GetVersion(pVersion);
+		return true;
+
+	case DecoderType::MPEGAudio:
+		MPEGAudioDecoder::GetVersion(pVersion);
+		return true;
+
+	case DecoderType::AC3:
+		AC3Decoder::GetVersion(pVersion);
+		return true;
+
+#ifdef LIBISDB_HAS_FDK_AAC
+	case DecoderType::FDK_AAC:
+		AACDecoder_FDK::GetVersion(pVersion);
+		return true;
+
+	case DecoderType::AAC_LATM:
+		AACDecoder_FDK::GetVersion(pVersion);
+		return true;
+#endif
+
+#ifdef LIBISDB_HAS_LIBAV_AAC
+	case DecoderType::AAC_LATM_LIBAV:
+		AACLATMDecoder_Libav::GetVersion(pVersion);
+		return true;
+#endif
+	}
+
+	pVersion->clear();
+
+	return false;
+}
+
+
+} // namespace LibISDB::DirectShow

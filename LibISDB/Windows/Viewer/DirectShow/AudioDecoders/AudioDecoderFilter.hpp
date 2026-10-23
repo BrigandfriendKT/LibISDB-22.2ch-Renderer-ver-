@@ -33,7 +33,9 @@
 #include "../../../../Base/DataBuffer.hpp"
 #include "../../../../Base/SIMD.hpp"
 #include "../../../../Base/EventListener.hpp"
+#include <atomic>
 #include <memory>
+#include <vector>
 
 
 namespace LibISDB::DirectShow
@@ -68,6 +70,13 @@ namespace LibISDB::DirectShow
 			AAC,
 			MPEGAudio,
 			AC3,
+#ifdef LIBISDB_HAS_FDK_AAC
+			FDK_AAC,
+			AAC_LATM,
+#endif
+#ifdef LIBISDB_HAS_LIBAV_AAC
+			AAC_LATM_LIBAV,
+#endif
 		};
 
 		enum class DualMonoMode {
@@ -101,10 +110,7 @@ namespace LibISDB::DirectShow
 			SPDIFOptions() = default;
 			SPDIFOptions(SPDIFMode mode, UINT channels) noexcept
 				: Mode(mode), PassthroughChannels(channels) {}
-			bool operator == (const SPDIFOptions &rhs) const noexcept {
-				return (Mode == rhs.Mode) && (PassthroughChannels == rhs.PassthroughChannels);
-			}
-			bool operator != (const SPDIFOptions &rhs) const noexcept { return !(*this == rhs); }
+			bool operator == (const SPDIFOptions &rhs) const noexcept = default;
 		};
 
 		struct SurroundMixingMatrix {
@@ -119,6 +125,22 @@ namespace LibISDB::DirectShow
 		{
 		public:
 			virtual void OnSPDIFPassthroughError(HRESULT hr) {}
+
+			// 出力フォーマットが変わり、今接続されているレンダラへの
+			// 再接続(ReconnectOutput())を試みたが拒否された時に呼ばれる。
+			// (例: 22.2ch用のSpatialAudioRendererが繋がっている状態で
+			//  番組が22.2chでなくなった場合、あるいはその逆)
+			// 呼び出し側(ViewerFilter)は、これを受けてレンダラの
+			// 繋ぎ直しを行うことを想定している
+			virtual void OnAudioFormatChangeRejected() {}
+
+			// 設定変更(SetLatmDownmixChannels())により、今接続されている
+			// レンダラが不適切になる可能性があるため、レンダラの再確認
+			// (必要なら繋ぎ直し)を依頼する時に呼ばれる。
+			// OnAudioFormatChangeRejected()と異なり、呼び出しは設定を変更した
+			// スレッド(通常はUIスレッド)から行われ、ストリーミングスレッド
+			// からではない
+			virtual void OnAudioRendererRecheckRequested() {}
 		};
 
 		class SampleCallback
@@ -131,6 +153,7 @@ namespace LibISDB::DirectShow
 		using AudioInfo = AudioDecoder::AudioInfo;
 
 		bool SetDecoderType(DecoderType Type);
+		DecoderType GetDecoderType() const noexcept { return m_DecoderType; }
 		uint8_t GetCurrentChannelCount() const;
 		uint8_t GetOutputChannelCount() const;
 		bool GetAudioInfo(ReturnArg<AudioInfo> Info) const;
@@ -140,6 +163,12 @@ namespace LibISDB::DirectShow
 		StereoMode GetStereoMode() const noexcept { return m_StereoMode; }
 		bool SetDownMixSurround(bool DownMix);
 		bool GetDownMixSurround() const noexcept { return m_DownMixSurround; }
+
+		// 22.2ch等、8chを超えるAAC-LATM音声のダウンミックス先チャンネル数を
+		// 指定する。8=7.1ch(既定), 6=5.1ch, 0=ダウンミックスしない
+		bool SetLatmDownmixChannels(int Channels);
+		bool SetLatmDownmixPresetName(const LibISDB::CharType *pName);
+		int GetLatmDownmixChannels() const noexcept { return m_LatmDownmixChannels; }
 		bool SetSurroundMixingMatrix(const SurroundMixingMatrix *pMatrix);
 		bool SetDownMixMatrix(const DownMixMatrix *pMatrix);
 		bool SetGainControl(bool GainControl, float Gain = 1.0f, float SurroundGain = 1.0f);
@@ -155,6 +184,8 @@ namespace LibISDB::DirectShow
 		bool AddEventListener(EventListener *pEventListener);
 		bool RemoveEventListener(EventListener *pEventListener);
 		bool SetSampleCallback(SampleCallback *pCallback);
+
+		static bool GetDecoderVersion(DecoderType Type, std::string *pVersion);
 
 	private:
 		AudioDecoderFilter(LPUNKNOWN pUnk, HRESULT *phr);
@@ -189,6 +220,8 @@ namespace LibISDB::DirectShow
 		size_t DownMixStereo(int16_t *pDst, const int16_t *pSrc, size_t Samples);
 		size_t DownMixSurround(int16_t *pDst, const int16_t *pSrc, size_t Samples);
 		size_t MapSurroundChannels(int16_t *pDst, const int16_t *pSrc, size_t Samples);
+		size_t DownMixSurround8(int16_t *pDst, const int16_t *pSrc, size_t Samples);
+		size_t MapSurround8Channels(int16_t *pDst, const int16_t *pSrc, size_t Samples);
 		void GainControl(int16_t *pBuffer, size_t Samples, float Gain);
 		void SelectDualMonoStereoMode();
 		AudioDecoder * CreateDecoder(DecoderType Type);
@@ -200,11 +233,13 @@ namespace LibISDB::DirectShow
 		SSEDataBuffer m_OutData;
 		uint8_t m_OutChannelNum;
 		uint8_t m_CurChannelNum;
+		std::vector<int16_t> m_ExpandWork; // 24ch拡張時の中間バッファ(ProcessPCM内でのみ使用)
 		bool m_DualMono;
 
 		DualMonoMode m_DualMonoMode;
 		StereoMode m_StereoMode;
 		bool m_DownMixSurround;
+		int m_LatmDownmixChannels = 8;
 		bool m_EnableCustomMixingMatrix;
 		SurroundMixingMatrix m_MixingMatrix;
 		bool m_EnableCustomDownMixMatrix;
@@ -220,6 +255,10 @@ namespace LibISDB::DirectShow
 		REFERENCE_TIME m_StartTime;
 		LONGLONG m_SampleCount;
 		bool m_Discontinuity;
+		// レンダラの繋ぎ直し中は、新しい形式の出力を送らずに捨てる
+		// (古いレンダラへ、受け付けられない形式のデータや形式変更を
+		//  送ってしまうのを避けるため)
+		std::atomic<bool> m_HoldOutput{false};
 		bool m_InputDiscontinuity;
 
 		SPDIFOptions m_SPDIFOptions;
@@ -231,7 +270,7 @@ namespace LibISDB::DirectShow
 		SampleCallback *m_pSampleCallback;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_AUDIO_DECODER_FILTER_H
+#endif // ifndef LIBISDB_AUDIO_DECODER_FILTER_H
