@@ -103,6 +103,16 @@ namespace LibISDB
 			AudioRenderer,
 		};
 
+		enum class AACDecoderType {
+			FAAD2,
+#ifdef LIBISDB_HAS_FDK_AAC
+			FDK_AAC,
+			Default = FDK_AAC,
+#else
+			Default = FAAD2,
+#endif
+		};
+
 		ViewerFilter() noexcept;
 		~ViewerFilter();
 
@@ -187,11 +197,35 @@ namespace LibISDB
 		bool IsSPDIFPassthrough() const;
 		bool SetDownMixSurround(bool DownMix);
 		bool GetDownMixSurround() const;
+
+		// 22.2ch等、8chを超えるAAC-LATM音声のダウンミックス先チャンネル数を
+		// 指定する。8=7.1ch(既定), 6=5.1ch, 0=ダウンミックスしない
+		// 音声の出力方式(22.2ch等を「ダウンミックスしない」設定にした時の扱い)
+		//   Auto   : Windows空間オーディオ用レンダラを試し、使えなければ7.1chへ切り替える
+		//   Matrix : 空間オーディオは試さず、常にチャンネルマトリクス(7.1/5.1等)で出力する
+		enum class AudioOutputMode {
+			Auto,
+			Matrix,
+		};
+		bool SetAudioOutputMode(AudioOutputMode Mode);
+		AudioOutputMode GetAudioOutputMode() const { return m_AudioOutputMode; }
+
+		bool SetLatmDownmixChannels(int Channels);
+		// LatmDownmixPresets.iniのプリセットを明示的な名前で指定する。
+		// nullptrまたは空文字列の場合、SetLatmDownmixChannels()の値から
+		// 決まる既定名("7.1ch"/"5.1ch"/"2ch")が使われる
+		bool SetLatmDownmixPresetName(const CharType *pName);
+		int GetLatmDownmixChannels() const;
 		bool SetAudioGainControl(bool EnableGainControl, float Gain = 1.0f, float SurroundGain = 1.0f);
 		bool SetAudioDelay(LONGLONG Delay);
 		LONGLONG GetAudioDelay() const;
 		COMPointer<DirectShow::AudioDecoderFilter> GetAudioDecoderFilter() const;
 		bool SetAudioStreamType(uint8_t StreamType);
+		bool SetAudioComponentType(uint8_t ComponentType);
+		AACDecoderType GetAACDeocderType() const noexcept { return m_AACDecoderType; }
+		bool SetAACDecoderType(AACDecoderType Type);
+		static LPCTSTR GetAACDecoderName(AACDecoderType Type);
+		static bool GetAACDecoderVersion(AACDecoderType Type, std::string *pVersion);
 
 		bool GetVideoDecoderName(String *pName) const;
 		bool GetVideoRendererName(String *pName) const;
@@ -235,8 +269,21 @@ namespace LibISDB
 		void ApplyAdjustVideoSampleOptions();
 		void SetAudioDecoderType(BYTE StreamType);
 
+		// 音声レンダラを構築し、OutputAudioPinへ接続する
+		// (Windows空間オーディオ用レンダラを優先的に試し、
+		//  ダメなら通常のレンダラへフォールバックする)
+		bool BuildAudioRenderer(COMPointer<IPin> &OutputAudioPin);
+		// 番組の音声フォーマットが変わり、今のレンダラでは
+		// 受け付けられなくなった時に、レンダラを繋ぎ直す
+		// CanStopGraph: 呼び出し元がストリーミングスレッドではないことが
+		// 分かっている場合にtrue(ピンの切断に失敗した時に、グラフを
+		// 完全に停止して再試行する)
+		bool RebuildAudioRenderer(bool CanStopGraph = false);
+
 	// AudioDecoderFilter::EventListener
 		void OnSPDIFPassthroughError(HRESULT hr) override;
+		void OnAudioFormatChangeRejected() override;
+		void OnAudioRendererRecheckRequested() override;
 
 	// VideoParser::EventListener
 		void OnVideoInfoUpdated(const DirectShow::VideoParser::VideoInfo &Info) override;
@@ -255,6 +302,9 @@ namespace LibISDB
 		std::unique_ptr<DirectShow::VideoRenderer> m_VideoRenderer;
 		// 音声レンダラ
 		COMPointer<IBaseFilter> m_AudioRenderer;
+		// 音声レンダラ構築時に使う、明示的なデバイス指定(RebuildAudioRenderer()
+		// から再利用できるよう、BuildGraph()のOpenSettingsからここへ保存しておく)
+		DirectShow::FilterInfo m_AudioDeviceInfo;
 		// 映像パーサ
 		COMPointer<IBaseFilter> m_VideoParserFilter;
 		DirectShow::VideoParser *m_pVideoParser;
@@ -277,10 +327,13 @@ namespace LibISDB
 
 		mutable MutexLock m_ResizeLock;
 		DirectShow::VideoRenderer::RendererType m_VideoRendererType;
+		AACDecoderType m_AACDecoderType;
 		String m_VideoDecoderName;
 		String m_AudioRendererName;
+		AudioOutputMode m_AudioOutputMode = AudioOutputMode::Auto;
 		uint8_t m_VideoStreamType;
 		uint8_t m_AudioStreamType;
+		uint8_t m_AudioComponentType = COMPONENT_TYPE_INVALID;
 		int m_ForcedAspectX;
 		int m_ForcedAspectY;
 		ClippingInfo m_Clipping;
@@ -303,7 +356,7 @@ namespace LibISDB
 		DirectShow::KnownDecoderManager m_KnownDecoderManager;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_VIEWER_FILTER_H
+#endif // ifndef LIBISDB_VIEWER_FILTER_H

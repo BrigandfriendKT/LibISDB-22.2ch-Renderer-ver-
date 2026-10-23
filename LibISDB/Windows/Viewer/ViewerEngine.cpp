@@ -52,7 +52,7 @@ bool ViewerEngine::BuildViewer(const ViewerFilter::OpenSettings &Settings)
 	m_FilterGraph.DisconnectFilter(FilterID, FilterGraph::ConnectDirection::Upstream);
 	m_EngineLock.Unlock();
 
-	bool OK = m_pViewer->OpenViewer(Settings);
+	const bool OK = m_pViewer->OpenViewer(Settings);
 	if (!OK)
 		SetError(m_pViewer->GetLastErrorDescription());
 
@@ -80,7 +80,7 @@ bool ViewerEngine::RebuildViewer(const ViewerFilter::OpenSettings &Settings)
 	m_EngineLock.Unlock();
 
 	m_pViewer->CloseViewer();
-	bool OK = m_pViewer->OpenViewer(Settings);
+	const bool OK = m_pViewer->OpenViewer(Settings);
 	if (!OK)
 		SetError(m_pViewer->GetLastErrorDescription());
 
@@ -308,6 +308,13 @@ void ViewerEngine::OnAudioStreamTypeChanged(uint8_t StreamType)
 }
 
 
+void ViewerEngine::OnAudioComponentTypeChanged(uint8_t ComponentType)
+{
+	if (m_pViewer != nullptr)
+		m_pViewer->SetAudioComponentType(ComponentType);
+}
+
+
 void ViewerEngine::UpdateVideoAndAudioPID()
 {
 	BlockLock Lock(m_EngineLock);
@@ -325,4 +332,4 @@ void ViewerEngine::UpdateVideoAndAudioPID()
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

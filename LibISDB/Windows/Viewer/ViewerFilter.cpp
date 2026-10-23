@@ -31,9 +31,12 @@
 #include "DirectShow/VideoParsers/MPEG2ParserFilter.hpp"
 #include "DirectShow/VideoParsers/H264ParserFilter.hpp"
 #include "DirectShow/VideoParsers/H265ParserFilter.hpp"
+#include "DirectShow/SpatialAudioRenderer/SpatialAudioRendererFactory.hpp"
+#include "../../Utilities/StringFormat.hpp"
 #include "../../Utilities/StringUtilities.hpp"
-#include <numeric>	// for std::gcd()
+#include <numeric> // for std::gcd()
 #include <dvdmedia.h>
+#include <cwchar>
 #include "../../Base/DebugDef.hpp"
 
 // LAV Video Decoder で一度再生を停止すると再開が正常に行われない現象の回避策を行う
@@ -57,7 +60,7 @@ const std::chrono::milliseconds LOCK_TIMEOUT(2000);
 
 HRESULT SetVideoMediaType(CMediaType *pMediaType, BYTE VideoStreamType, int Width, int Height)
 {
-	static const REFERENCE_TIME TIME_PER_FRAME =
+	constexpr REFERENCE_TIME TIME_PER_FRAME =
 		static_cast<REFERENCE_TIME>(10000000.0 / 29.97 + 0.5);
 
 	switch (VideoStreamType) {
@@ -155,7 +158,7 @@ interface __declspec(uuid("8B81E022-52C7-4B89-9F11-ACFD063AABB4")) IPinSegmentEx
 
 bool IsLAVVideoDecoderName(const String &Name)
 {
-	return StringCompareI(Name.c_str(), LIBISDB_STR("LAV Video Decoder")) == 0;
+	return StringEqualsI(Name, LIBISDB_STR("LAV Video Decoder"));
 }
 
 
@@ -188,10 +191,10 @@ void LAVVideoDecoder_NotifyNewSegment(COMPointer<IBaseFilter> &Filter, const Str
 }
 
 
-#endif	// LAV_VIDEO_DECODER_WORKAROUND
+#endif // LAV_VIDEO_DECODER_WORKAROUND
 
 
-}	// namespace
+} // namespace
 
 
 
@@ -208,6 +211,7 @@ ViewerFilter::ViewerFilter() noexcept
 	, m_VideoWindowSize()
 
 	, m_VideoRendererType(DirectShow::VideoRenderer::RendererType::Invalid)
+	, m_AACDecoderType(AACDecoderType::Default)
 	, m_VideoStreamType(STREAM_TYPE_UNINITIALIZED)
 	, m_AudioStreamType(STREAM_TYPE_UNINITIALIZED)
 	, m_ForcedAspectX(0)
@@ -268,7 +272,7 @@ void ViewerFilter::SetActiveVideoPID(uint16_t PID, bool ServiceChanged)
 	if (PID == m_VideoPID)
 		return;
 
-	LIBISDB_TRACE(LIBISDB_STR("ViewerFilter::SetActiveVideoPID() : %04X <- %04X\n"), PID, m_VideoPID);
+	LIBISDB_TRACE(LIBISDB_STR("ViewerFilter::SetActiveVideoPID() : {:04X} <- {:04X}\n"), PID, m_VideoPID);
 
 	if (m_MPEG2DemuxerVideoMap) {
 		// 現在のPIDをアンマップ
@@ -300,7 +304,7 @@ void ViewerFilter::SetActiveAudioPID(uint16_t PID, bool ServiceChanged)
 			&& (UseMap || PID == m_MapAudioPID))
 		return;
 
-	LIBISDB_TRACE(LIBISDB_STR("ViewerFilter::SetActiveAudioPID() : %04X <- %04X\n"), PID, m_AudioPID);
+	LIBISDB_TRACE(LIBISDB_STR("ViewerFilter::SetActiveAudioPID() : {:04X} <- {:04X}\n"), PID, m_AudioPID);
 
 	if (UseMap && (PID != PID_INVALID) && (m_MapAudioPID != PID_INVALID)) {
 		/*
@@ -583,14 +587,14 @@ bool ViewerFilter::OpenViewer(const OpenSettings &Settings)
 					bool Connected = false;
 
 					for (const auto &Filter : FilterList) {
-						if (StringCompareI(Name, Filter.FriendlyName) == 0) {
+						if (StringEqualsI(Name, Filter.FriendlyName)) {
 							COMPointer<IBaseFilter> FilterInterface;
 
 							hr = DirectShow::AppendFilterAndConnect(
 								m_GraphBuilder.Get(), Filter.clsid, Filter.FriendlyName.c_str(),
 								&FilterInterface, &OutputAudioPin, true);
 							if (SUCCEEDED(hr)) {
-								LIBISDB_TRACE(LIBISDB_STR("Audio filter connected : %") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("\n"), Filter.FriendlyName.c_str());
+								LIBISDB_TRACE(LIBISDB_STR("Audio filter connected : {}\n"), Filter.FriendlyName);
 								m_AudioFilterList.emplace_back(std::move(FilterInterface));
 								Connected = true;
 							} else {
@@ -671,89 +675,12 @@ bool ViewerFilter::OpenViewer(const OpenSettings &Settings)
 		Log(Logger::LogType::Information, LIBISDB_STR("音声レンダラの構築中..."));
 
 		// 音声レンダラ構築
-		{
-			bool OK = false;
-
-			if (!Settings.AudioDevice.MonikerName.empty()) {
-				hr = DirectShow::CreateFilterFromMonikerName(
-					Settings.AudioDevice.MonikerName.c_str(), &m_AudioRenderer, &m_AudioRendererName);
-				if (SUCCEEDED(hr)) {
-					OK = true;
-				}
-			}
-
-			if (!OK && !Settings.AudioDevice.FriendlyName.empty()) {
-				DirectShow::DeviceEnumerator DevEnum;
-
-				if (DevEnum.CreateFilter(
-						CLSID_AudioRendererCategory,
-						Settings.AudioDevice.FriendlyName.c_str(),
-						m_AudioRenderer.GetPP())) {
-					m_AudioRendererName = Settings.AudioDevice.FriendlyName;
-					OK = true;
-				}
-			}
-
-			if (!OK) {
-				hr = ::CoCreateInstance(
-					CLSID_DSoundRender, nullptr, CLSCTX_INPROC_SERVER,
-					IID_PPV_ARGS(m_AudioRenderer.GetPP()));
-				if (SUCCEEDED(hr)) {
-					m_AudioRendererName = LIBISDB_STR("DirectSound Renderer");
-					OK = true;
-				}
-			}
-
-			if (OK) {
-				hr = DirectShow::AppendFilterAndConnect(
-					m_GraphBuilder.Get(), m_AudioRenderer.Get(), L"Audio Renderer", &OutputAudioPin);
-				if (SUCCEEDED(hr)) {
-#ifdef _DEBUG
-					LIBISDB_TRACE(LIBISDB_STR("音声デバイス %") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR(" を接続\n"), m_AudioRendererName.c_str());
-#endif
-					if (m_UseAudioRendererClock) {
-						IMediaFilter *pMediaFilter;
-
-						if (SUCCEEDED(m_GraphBuilder.QueryInterface(&pMediaFilter))) {
-							IReferenceClock *pReferenceClock;
-
-							if (SUCCEEDED(m_AudioRenderer.QueryInterface(&pReferenceClock))) {
-								pMediaFilter->SetSyncSource(pReferenceClock);
-								pReferenceClock->Release();
-								LIBISDB_TRACE(LIBISDB_STR("グラフのクロックに音声レンダラを選択\n"));
-							}
-							pMediaFilter->Release();
-						}
-					}
-					OK = true;
-				} else {
-					OK = false;
-				}
-				if (!OK) {
-					hr = m_GraphBuilder->Render(OutputAudioPin.Get());
-					if (FAILED(hr)) {
-						throw ErrorDescription(
-							HRESULTErrorCode(hr),
-							LIBISDB_STR("音声レンダラを接続できません。"),
-							LIBISDB_STR("設定で有効な音声デバイスが選択されているか確認してください。"));
-					}
-				}
-			} else {
-				// 音声デバイスが無い?
-				// Nullレンダラを繋げておく
-				hr = ::CoCreateInstance(
-					CLSID_NullRenderer, nullptr, CLSCTX_INPROC_SERVER,
-					IID_PPV_ARGS(m_AudioRenderer.GetPP()));
-				if (SUCCEEDED(hr)) {
-					hr = DirectShow::AppendFilterAndConnect(
-						m_GraphBuilder.Get(), m_AudioRenderer.Get(), L"Null Audio Renderer", &OutputAudioPin);
-					if (FAILED(hr)) {
-						throw ErrorDescription(HRESULTErrorCode(hr), LIBISDB_STR("Null音声レンダラを接続できません。"));
-					}
-					m_AudioRendererName = LIBISDB_STR("Null Renderer");
-					LIBISDB_TRACE(LIBISDB_STR("Nullレンダラを接続\n"));
-				}
-			}
+		m_AudioDeviceInfo = Settings.AudioDevice;
+		if (!BuildAudioRenderer(OutputAudioPin)) {
+			throw ErrorDescription(
+				HRESULTErrorCode(E_FAIL),
+				LIBISDB_STR("音声レンダラを接続できません。"),
+				LIBISDB_STR("設定で有効な音声デバイスが選択されているか確認してください。"));
 		}
 
 		/*
@@ -796,7 +723,7 @@ bool ViewerFilter::OpenViewer(const OpenSettings &Settings)
 		if (Error.GetErrorCode().value() != 0) {
 			TCHAR szText[MAX_ERROR_TEXT_LEN];
 
-			if (::AMGetErrorText(Error.GetErrorCode().value(), szText, (DWORD)std::size(szText)) > 0)
+			if (::AMGetErrorText(Error.GetErrorCode().value(), szText, static_cast<DWORD>(std::size(szText))) > 0)
 				SetErrorSystemMessage(szText);
 		}
 
@@ -806,7 +733,7 @@ bool ViewerFilter::OpenViewer(const OpenSettings &Settings)
 
 		CloseViewer();
 
-		LIBISDB_TRACE(LIBISDB_STR("フィルタグラフ構築失敗 : %") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("\n"), GetLastErrorText());
+		LIBISDB_TRACE(LIBISDB_STR("フィルタグラフ構築失敗 : {}\n"), GetLastErrorText());
 		return false;
 	}
 
@@ -817,6 +744,286 @@ bool ViewerFilter::OpenViewer(const OpenSettings &Settings)
 	LIBISDB_TRACE(LIBISDB_STR("フィルタグラフ構築成功\n"));
 
 	return true;
+}
+
+
+bool ViewerFilter::BuildAudioRenderer(COMPointer<IPin> &OutputAudioPin)
+{
+	HRESULT hr;
+	bool OK = false;
+	bool AlreadyConnected = false;
+
+	// 22.2ch(24ch、AAC-LATMを「ダウンミックスしない」設定)の場合、
+	// まずWindows空間オーディオ用レンダラへの接続を試みる。
+	// AudioDecoderFilterの出力が24ch/48kHz/16bitでない場合や、
+	// 環境がWindows Sonic for Headphonesの動的オブジェクトに
+	// 対応していない場合は、CheckMediaType()で自然に接続が
+	// 失敗するので、その場合は何もせず下の通常のレンダラ選択へ
+	// フォールバックする(接続に失敗したフィルタはグラフから
+	// 自動的に取り除かれるため、後続処理に影響しない)
+	// Matrixモードでは空間オーディオを試さず、直接チャンネルマトリクス出力へ進む
+	if ((m_AudioOutputMode != AudioOutputMode::Matrix)
+			&& DirectShow::IsSpatialAudioRendererAvailable()) {
+		HRESULT hrSpatial = S_OK;
+		COMPointer<IBaseFilter> SpatialRenderer;
+
+		SpatialRenderer.Attach(DirectShow::CreateSpatialAudioRenderer(nullptr, &hrSpatial));
+
+		// 診断用: ここで何が起きているか必ず出力する
+		{
+			wchar_t szBuff[256];
+			swprintf_s(
+				szBuff,
+				L"[LatmSpatial] BuildAudioRenderer: OutputAudioPin=%p hrSpatial=0x%08X SpatialRenderer=%p\n",
+				OutputAudioPin.Get(), static_cast<unsigned int>(hrSpatial), SpatialRenderer.Get());
+			::OutputDebugStringW(szBuff);
+		}
+
+		if (SUCCEEDED(hrSpatial) && SpatialRenderer) {
+			hr = DirectShow::AppendFilterAndConnect(
+				m_GraphBuilder.Get(), SpatialRenderer.Get(),
+				L"Spatial Audio Renderer", &OutputAudioPin);
+
+			{
+				wchar_t szBuff[128];
+				swprintf_s(szBuff, L"[LatmSpatial] BuildAudioRenderer: AppendFilterAndConnect hr=0x%08X\n", static_cast<unsigned int>(hr));
+				::OutputDebugStringW(szBuff);
+			}
+
+			if (SUCCEEDED(hr)) {
+				m_AudioRenderer = SpatialRenderer;
+				m_AudioRendererName = LIBISDB_STR("Windows Spatial Audio (22.2ch)");
+				LIBISDB_TRACE(LIBISDB_STR("22.2ch空間オーディオレンダラを接続\n"));
+				OK = true;
+				AlreadyConnected = true;
+			}
+		}
+	}
+
+	// 空間オーディオ用レンダラを使えなかった場合(Windows Sonic等が無効、
+	// 対応していないエンジン、接続失敗など)は、「ダウンミックスしない」設定でも
+	// 生の24chを通常のレンダラへは流さず、7.1chダウンミックスへ切り替える。
+	// (チャンネルマスクが未指定の24chは、通常のレンダラでは先頭2ch=FC/FLcが
+	//  そのまま左右として扱われ、センターの音が左耳からしか聞こえなくなる)
+	// これはデコーダの実行時の動作を変えるだけで、TVTest側に保存されている
+	// 「ダウンミックスしない」という設定値自体は書き換えない
+	if (!OK && m_AudioDecoder && (m_AudioDecoder->GetLatmDownmixChannels() == 0)) {
+		::OutputDebugStringW(L"[LatmSpatial] spatial audio unavailable: falling back to 7.1ch downmix\n");
+		m_AudioDecoder->SetLatmDownmixChannels(8);
+	}
+
+	if (!OK && !m_AudioDeviceInfo.MonikerName.empty()) {
+		hr = DirectShow::CreateFilterFromMonikerName(
+			m_AudioDeviceInfo.MonikerName.c_str(), &m_AudioRenderer, &m_AudioRendererName);
+		if (SUCCEEDED(hr)) {
+			OK = true;
+		}
+	}
+
+	if (!OK && !m_AudioDeviceInfo.FriendlyName.empty()) {
+		DirectShow::DeviceEnumerator DevEnum;
+
+		if (DevEnum.CreateFilter(
+				CLSID_AudioRendererCategory,
+				m_AudioDeviceInfo.FriendlyName.c_str(),
+				m_AudioRenderer.GetPP())) {
+			m_AudioRendererName = m_AudioDeviceInfo.FriendlyName;
+			OK = true;
+		}
+	}
+
+	if (!OK) {
+		hr = ::CoCreateInstance(
+			CLSID_DSoundRender, nullptr, CLSCTX_INPROC_SERVER,
+			IID_PPV_ARGS(m_AudioRenderer.GetPP()));
+		if (SUCCEEDED(hr)) {
+			m_AudioRendererName = LIBISDB_STR("DirectSound Renderer");
+			OK = true;
+		}
+	}
+
+	if (OK) {
+		if (!AlreadyConnected) {
+			hr = DirectShow::AppendFilterAndConnect(
+				m_GraphBuilder.Get(), m_AudioRenderer.Get(), L"Audio Renderer", &OutputAudioPin);
+			if (FAILED(hr))
+				OK = false;
+		}
+		if (OK) {
+#ifdef _DEBUG
+			LIBISDB_TRACE(LIBISDB_STR("音声デバイス {} を接続\n"), m_AudioRendererName);
+#endif
+			if (m_UseAudioRendererClock) {
+				IMediaFilter *pMediaFilter;
+
+				if (SUCCEEDED(m_GraphBuilder.QueryInterface(&pMediaFilter))) {
+					IReferenceClock *pReferenceClock;
+
+					if (SUCCEEDED(m_AudioRenderer.QueryInterface(&pReferenceClock))) {
+						pMediaFilter->SetSyncSource(pReferenceClock);
+						pReferenceClock->Release();
+						LIBISDB_TRACE(LIBISDB_STR("グラフのクロックに音声レンダラを選択\n"));
+					}
+					pMediaFilter->Release();
+				}
+			}
+		}
+		if (!OK) {
+			hr = m_GraphBuilder->Render(OutputAudioPin.Get());
+			if (FAILED(hr))
+				return false;
+		}
+	} else {
+		// 音声デバイスが無い？
+		// Nullレンダラを繋げておく
+		hr = ::CoCreateInstance(
+			CLSID_NullRenderer, nullptr, CLSCTX_INPROC_SERVER,
+			IID_PPV_ARGS(m_AudioRenderer.GetPP()));
+		if (SUCCEEDED(hr)) {
+			hr = DirectShow::AppendFilterAndConnect(
+				m_GraphBuilder.Get(), m_AudioRenderer.Get(), L"Null Audio Renderer", &OutputAudioPin);
+			if (FAILED(hr))
+				return false;
+			m_AudioRendererName = LIBISDB_STR("Null Renderer");
+			LIBISDB_TRACE(LIBISDB_STR("Nullレンダラを接続\n"));
+		}
+	}
+
+	return true;
+}
+
+
+bool ViewerFilter::RebuildAudioRenderer(bool CanStopGraph)
+{
+	// 番組の音声フォーマットが変わり、今のレンダラでは
+	// 受け付けられなくなった時(AudioDecoderFilter::EventListener::
+	// OnAudioFormatChangeRejectedから呼ばれる)に、
+	// レンダラをいったん切り離して、
+	// 改めて選び直す。
+	{
+		// 診断用: 繋ぎ直しが呼ばれた時の状態
+		wchar_t szBuff[192];
+		swprintf_s(
+			szBuff,
+			L"[LatmSpatial] RebuildAudioRenderer: enter (spatial=%d downmix=%d mode=%d)\n",
+			(m_AudioRendererName == LIBISDB_STR("Windows Spatial Audio (22.2ch)")) ? 1 : 0,
+			m_AudioDecoder ? m_AudioDecoder->GetLatmDownmixChannels() : -1,
+			static_cast<int>(m_AudioOutputMode));
+		::OutputDebugStringW(szBuff);
+	}
+
+	TryBlockLock Lock(m_FilterLock);
+	if (!Lock.TryLock(LOCK_TIMEOUT)) {
+		::OutputDebugStringW(L"[LatmSpatial] RebuildAudioRenderer: lock timeout -> give up\n");
+		return false;
+	}
+
+	if (!m_GraphBuilder || !m_AudioDecoder || !m_AudioRenderer) {
+		::OutputDebugStringW(L"[LatmSpatial] RebuildAudioRenderer: graph/decoder/renderer missing -> give up\n");
+		return false;
+	}
+
+	// 既に22.2ch用レンダラが繋がっていて、かつ「ダウンミックスしない」設定の
+	// ままであれば、不要な繋ぎ直し(再生の一瞬の途切れ)を避けるため
+	// スキップする。この設定の時、デコーダは元の音声が何chであっても
+	// 常に24chで出力するため、音声トラックを切り替えても、空間オーディオ用
+	// レンダラが受け付けられない形式への変更は起こらない。
+	// (Matrixモードへ切り替えられた場合や、ダウンミックス先が選ばれた
+	//  場合は、空間オーディオ用レンダラを外す必要があるのでスキップしない)
+	if ((m_AudioOutputMode != AudioOutputMode::Matrix)
+			&& (m_AudioRendererName == LIBISDB_STR("Windows Spatial Audio (22.2ch)"))
+			&& (m_AudioDecoder->GetLatmDownmixChannels() == 0)) {
+		::OutputDebugStringW(L"[LatmSpatial] RebuildAudioRenderer: skipped (spatial renderer still appropriate)\n");
+		return true;
+	}
+
+	LIBISDB_TRACE(LIBISDB_STR("音声レンダラの繋ぎ直しを開始\n"));
+
+	// グラフを一旦一時停止(Pause)させる。
+	// フィルタの追加/削除やピンの接続のやり直しは、
+	// StoppedまたはPaused状態でないと安全に行えない
+	COMPointer<IMediaControl> MediaControl;
+	if (FAILED(m_GraphBuilder.QueryInterface(&MediaControl)))
+		return false;
+
+	OAFilterState State;
+	MediaControl->GetState(200, &State);
+	const bool WasRunning = (State == State_Running);
+	// StoppedならPause()/Run()での状態復元は不要
+	// (まだ再生が始まっていない起動シーケンス中に、ここでの
+	//  一時停止操作が本来の起動処理と干渉するのを避けるため)
+	const bool NeedStateRestore = (State != State_Stopped);
+
+	if (NeedStateRestore)
+		MediaControl->Pause();
+
+	// 今の音声レンダラをグラフから切り離す
+	COMPointer<IPin> InputPin;
+	InputPin.Attach(DirectShow::GetFilterPin(m_AudioRenderer.Get(), PINDIR_INPUT));
+	COMPointer<IPin> OutputAudioPin;
+	OutputAudioPin.Attach(DirectShow::GetFilterPin(m_AudioDecoder.Get(), PINDIR_OUTPUT));
+
+	HRESULT hrDisc1 = S_OK, hrDisc2 = S_OK;
+	auto DisconnectPins = [&]() {
+		hrDisc1 = InputPin ? m_GraphBuilder->Disconnect(InputPin.Get()) : S_OK;
+		hrDisc2 = OutputAudioPin ? m_GraphBuilder->Disconnect(OutputAudioPin.Get()) : S_OK;
+	};
+	DisconnectPins();
+
+	// 一時停止(Pause)のままではピンの切断に失敗する場合がある
+	// (DirectShowのピンは、フィルタがStopped状態でないと切断できない)。
+	// 呼び出し元がストリーミングスレッドでないと分かっている場合に限り、
+	// グラフを完全に停止して、もう一度試す
+	if (CanStopGraph && NeedStateRestore && (FAILED(hrDisc1) || FAILED(hrDisc2))) {
+		::OutputDebugStringW(L"[LatmSpatial] RebuildAudioRenderer: disconnect failed while paused -> stop graph and retry\n");
+		MediaControl->Stop();
+		DisconnectPins();
+	}
+
+	{
+		// 診断用: グラフの状態と、ピン切断の結果(0以外なら切断に失敗)
+		wchar_t szBuff[192];
+		swprintf_s(
+			szBuff,
+			L"[LatmSpatial] RebuildAudioRenderer: state=%d wasRunning=%d disconnect(renderer in)=0x%08X disconnect(decoder out)=0x%08X\n",
+			static_cast<int>(State), WasRunning ? 1 : 0,
+			static_cast<unsigned int>(hrDisc1), static_cast<unsigned int>(hrDisc2));
+		::OutputDebugStringW(szBuff);
+	}
+
+	m_GraphBuilder->RemoveFilter(m_AudioRenderer.Get());
+	m_AudioRenderer.Release();
+
+	bool OK = false;
+	if (OutputAudioPin) {
+		OK = BuildAudioRenderer(OutputAudioPin);
+	}
+
+	if (NeedStateRestore) {
+		if (WasRunning)
+			MediaControl->Run();
+		else
+			MediaControl->Pause();
+	}
+
+	LIBISDB_TRACE(
+		LIBISDB_STR("音声レンダラの繋ぎ直し終了 OK={}\n"), OK);
+
+	return OK;
+}
+
+
+void ViewerFilter::OnAudioFormatChangeRejected()
+{
+	// ストリーミングスレッドから呼ばれるため、グラフの停止は行わない
+	RebuildAudioRenderer(false);
+}
+
+
+void ViewerFilter::OnAudioRendererRecheckRequested()
+{
+	// 設定を変更したスレッド(UIスレッド等)から呼ばれる
+	RebuildAudioRenderer(true);
 }
 
 
@@ -1003,7 +1210,7 @@ bool ViewerFilter::DisplayModeChanged()
 void ViewerFilter::Set1SegMode(bool OneSeg)
 {
 	if (m_1SegMode != OneSeg) {
-		LIBISDB_TRACE(LIBISDB_STR("ViewerFilter::Set1SegMode(%d)\n"), OneSeg);
+		LIBISDB_TRACE(LIBISDB_STR("ViewerFilter::Set1SegMode({})\n"), OneSeg);
 
 		m_1SegMode = OneSeg;
 
@@ -1110,11 +1317,11 @@ bool ViewerFilter::AdjustVideoPosition()
 				int NewDestWidth = ::MulDiv(m_VideoInfo.OriginalWidth, DestWidth, rcSrc.right - rcSrc.left);
 				if (NewDestWidth > WindowWidth)
 					NewDestWidth = WindowWidth;
-				int NewSrcWidth = ::MulDiv(rcSrc.right - rcSrc.left, NewDestWidth, DestWidth);
+				const int NewSrcWidth = ::MulDiv(rcSrc.right - rcSrc.left, NewDestWidth, DestWidth);
 				rcSrc.left = (m_VideoInfo.OriginalWidth - NewSrcWidth) / 2;
 				rcSrc.right = rcSrc.left + NewSrcWidth;
 				LIBISDB_TRACE(
-					LIBISDB_STR("Adjust %d x %d -> %d x %d [%d - %d (%d)]\n"),
+					LIBISDB_STR("Adjust {} x {} -> {} x {} [{} - {} ({})]\n"),
 					DestWidth, DestHeight, NewDestWidth, DestHeight,
 					rcSrc.left, rcSrc.right, NewSrcWidth);
 				DestWidth = NewDestWidth;
@@ -1140,7 +1347,7 @@ bool ViewerFilter::AdjustVideoPosition()
 
 #if 0
 		LIBISDB_TRACE(
-			LIBISDB_STR("SetVideoPosition %d,%d,%d,%d -> %d,%d,%d,%d [%d,%d,%d,%d]\n"),
+			LIBISDB_STR("SetVideoPosition {},{},{},{} -> {},{},{},{} [{},{},{},{}]\n"),
 			rcSrc.left, rcSrc.top, rcSrc.right, rcSrc.bottom,
 			rcDst.left, rcDst.top, rcDst.right, rcDst.bottom,
 			rcWindow.left, rcWindow.top, rcWindow.right, rcWindow.bottom);
@@ -1360,7 +1567,7 @@ bool ViewerFilter::GetEffectiveAspectRatio(ReturnArg<int> AspectX, ReturnArg<int
 			return false;
 		X = X * 3 * m_VideoInfo.OriginalWidth / m_VideoInfo.DisplayWidth;
 		Y = Y * 3 * m_VideoInfo.OriginalHeight / m_VideoInfo.DisplayHeight;
-		int d = std::gcd(X, Y);
+		const int d = std::gcd(X, Y);
 		if (d != 0) {
 			X /= d;
 			Y /= d;
@@ -1584,6 +1791,46 @@ bool ViewerFilter::GetDownMixSurround() const
 }
 
 
+bool ViewerFilter::SetAudioOutputMode(AudioOutputMode Mode)
+{
+	if (m_AudioOutputMode == Mode)
+		return true;
+
+	m_AudioOutputMode = Mode;
+
+	// 既にグラフが動いている場合は、レンダラを選び直して反映する
+	// (グラフ未構築の場合は次回のグラフ構築時に新しいモードが使われる)
+	if (m_AudioRenderer)
+		RebuildAudioRenderer(true); // 設定を変更したスレッド(UIスレッド等)からの呼び出し
+
+	return true;
+}
+
+
+bool ViewerFilter::SetLatmDownmixChannels(int Channels)
+{
+	if (m_AudioDecoder)
+		return m_AudioDecoder->SetLatmDownmixChannels(Channels);
+	return false;
+}
+
+
+bool ViewerFilter::SetLatmDownmixPresetName(const CharType *pName)
+{
+	if (m_AudioDecoder)
+		return m_AudioDecoder->SetLatmDownmixPresetName(pName);
+	return false;
+}
+
+
+int ViewerFilter::GetLatmDownmixChannels() const
+{
+	if (m_AudioDecoder)
+		return m_AudioDecoder->GetLatmDownmixChannels();
+	return 8;
+}
+
+
 bool ViewerFilter::SetAudioGainControl(bool EnableGainControl, float Gain, float SurroundGain)
 {
 	if (m_AudioDecoder)
@@ -1623,6 +1870,74 @@ bool ViewerFilter::SetAudioStreamType(uint8_t StreamType)
 	}
 
 	return true;
+}
+
+
+bool ViewerFilter::SetAudioComponentType(uint8_t ComponentType)
+{
+	// component_typeは現在デコーダ選択には使用していない(EITが
+	// 無いと取得できず信頼できないため)。値の記録のみ行う。
+	// SetAudioDecoderType()はSetAudioStreamType()側で既に
+	// 呼ばれているため、ここで再度呼ぶと同じデコーダ切り替え中に
+	// 二重に生成・破棄されることになり不要かつ有害
+	m_AudioComponentType = ComponentType;
+
+	return true;
+}
+
+
+bool ViewerFilter::SetAACDecoderType(AACDecoderType Type)
+{
+	if (m_AACDecoderType != Type) {
+		m_AACDecoderType = Type;
+		if (m_AudioStreamType == STREAM_TYPE_AAC)
+			SetAudioDecoderType(m_AudioStreamType);
+	}
+
+	return true;
+}
+
+
+LPCTSTR ViewerFilter::GetAACDecoderName(AACDecoderType Type)
+{
+	switch (Type) {
+	case AACDecoderType::FAAD2:
+		return TEXT("FAAD2");
+
+#ifdef LIBISDB_HAS_FDK_AAC
+	case AACDecoderType::FDK_AAC:
+		return TEXT("Fraunhofer FDK AAC");
+#endif
+	}
+
+	return nullptr;
+}
+
+
+bool ViewerFilter::GetAACDecoderVersion(AACDecoderType Type, std::string *pVersion)
+{
+	if (pVersion == nullptr)
+		return false;
+
+	DirectShow::AudioDecoderFilter::DecoderType Decoder;
+
+	switch (Type) {
+	case AACDecoderType::FAAD2:
+		Decoder = DirectShow::AudioDecoderFilter::DecoderType::AAC;
+		break;
+
+#ifdef LIBISDB_HAS_FDK_AAC
+	case AACDecoderType::FDK_AAC:
+		Decoder = DirectShow::AudioDecoderFilter::DecoderType::FDK_AAC;
+		break;
+#endif
+
+	default:
+		pVersion->clear();
+		return false;
+	}
+
+	return DirectShow::AudioDecoderFilter::GetDecoderVersion(Decoder, pVersion);
 }
 
 
@@ -1832,7 +2147,7 @@ bool ViewerFilter::ClearOSD()
 
 bool ViewerFilter::EnablePTSSync(bool Enable)
 {
-	LIBISDB_TRACE(LIBISDB_STR("ViewerFilter::EnablePTSSync(%") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR(")\n"), Enable ? LIBISDB_STR("true") : LIBISDB_STR("false"));
+	LIBISDB_TRACE(LIBISDB_STR("ViewerFilter::EnablePTSSync({})\n"), Enable);
 	if (m_SourceFilter) {
 		if (!m_SourceFilter->EnableSync(Enable, m_1SegMode))
 			return false;
@@ -1855,7 +2170,7 @@ bool ViewerFilter::IsPTSSyncEnabled() const
 bool ViewerFilter::SetAdjust1SegVideoSample(bool AdjustTime, bool AdjustFrameRate)
 {
 	LIBISDB_TRACE(
-		LIBISDB_STR("ViewerFilter::SetAdjust1SegVideoSample() : Adjust time %d / Adjust frame rate %d\n"),
+		LIBISDB_STR("ViewerFilter::SetAdjust1SegVideoSample() : Adjust time {} / Adjust frame rate {}\n"),
 		AdjustTime, AdjustFrameRate);
 
 	m_Adjust1SegVideoSampleTime = AdjustTime;
@@ -1875,7 +2190,7 @@ void ViewerFilter::ResetBuffer()
 
 bool ViewerFilter::SetBufferSize(size_t Size)
 {
-	LIBISDB_TRACE(LIBISDB_STR("ViewerFilter::SetBufferSize(%zu)\n"), Size);
+	LIBISDB_TRACE(LIBISDB_STR("ViewerFilter::SetBufferSize({})\n"), Size);
 
 	if (m_SourceFilter) {
 		if (!m_SourceFilter->SetBufferSize(Size))
@@ -1890,7 +2205,7 @@ bool ViewerFilter::SetBufferSize(size_t Size)
 
 bool ViewerFilter::SetInitialPoolPercentage(int Percentage)
 {
-	LIBISDB_TRACE(LIBISDB_STR("ViewerFilter::SetInitialPoolPercentage(%d)\n"), Percentage);
+	LIBISDB_TRACE(LIBISDB_STR("ViewerFilter::SetInitialPoolPercentage({})\n"), Percentage);
 
 	if (m_SourceFilter) {
 		if (!m_SourceFilter->SetInitialPoolPercentage(Percentage))
@@ -1913,7 +2228,7 @@ int ViewerFilter::GetBufferFillPercentage() const
 
 bool ViewerFilter::SetPacketInputWait(DWORD Wait)
 {
-	LIBISDB_TRACE(LIBISDB_STR("ViewerFilter::SetPacketInputWait(%u)\n"), Wait);
+	LIBISDB_TRACE(LIBISDB_STR("ViewerFilter::SetPacketInputWait({})\n"), Wait);
 
 	if (m_SourceFilter) {
 		if (!m_SourceFilter->SetInputWait(Wait))
@@ -1929,7 +2244,7 @@ bool ViewerFilter::SetPacketInputWait(DWORD Wait)
 void ViewerFilter::ConnectVideoDecoder(
 	LPCTSTR pszCodecName, const GUID &MediaSubType, LPCTSTR pszDecoderName, COMPointer<IPin> *pOutputPin)
 {
-	Log(Logger::LogType::Information, LIBISDB_STR("%") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("デコーダの接続中..."), pszCodecName);
+	Log(Logger::LogType::Information, LIBISDB_STR("{} デコーダの接続中..."), pszCodecName);
 
 	const bool Default = StringIsEmpty(pszDecoderName);
 	bool ConnectSuccess = false;
@@ -1962,13 +2277,13 @@ void ViewerFilter::ConnectVideoDecoder(
 
 		// 検索
 		if (!FilterFinder.FindFilters(&MEDIATYPE_Video, &MediaSubType)) {
-			StringPrintf(
+			StringFormat(
 				szText1,
-				LIBISDB_STR("%") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("デコーダが見付かりません。"),
+				LIBISDB_STR("{} デコーダが見付かりません。"),
 				pszCodecName);
-			StringPrintf(
+			StringFormat(
 				szText2,
-				LIBISDB_STR("%") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("デコーダがインストールされているか確認してください。"),
+				LIBISDB_STR("{} デコーダがインストールされているか確認してください。"),
 				pszCodecName);
 			throw ErrorDescription(HRESULTErrorCode(E_FAIL), szText1, szText2);
 		}
@@ -2002,9 +2317,9 @@ void ViewerFilter::ConnectVideoDecoder(
 	if (ConnectSuccess) {
 		m_VideoDecoderName = FilterName;
 	} else {
-		StringPrintf(
+		StringFormat(
 			szText1,
-			LIBISDB_STR("%") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("デコーダフィルタをフィルタグラフに追加できません。"),
+			LIBISDB_STR("{} デコーダフィルタをフィルタグラフに追加できません。"),
 			pszCodecName);
 		throw ErrorDescription(
 			HRESULTErrorCode(hr), szText1,
@@ -2058,7 +2373,7 @@ void ViewerFilter::ApplyAdjustVideoSampleOptions()
 		if (m_1SegMode) {
 			Flags = DirectShow::VideoParser::AdjustSampleFlag::OneSeg;
 			// Microsoft DTV-DVD Video Decoder では何故か映像が出なくなってしまうため無効とする
-			if (StringCompareI(m_VideoDecoderName.c_str(), LIBISDB_STR("Microsoft DTV-DVD Video Decoder")) != 0) {
+			if (!StringEqualsI(m_VideoDecoderName, LIBISDB_STR("Microsoft DTV-DVD Video Decoder"))) {
 				if (m_Adjust1SegVideoSampleTime)
 					Flags |= DirectShow::VideoParser::AdjustSampleFlag::Time;
 				if (m_Adjust1SegFrameRate)
@@ -2076,7 +2391,29 @@ void ViewerFilter::SetAudioDecoderType(BYTE StreamType)
 	if (m_AudioDecoder) {
 		m_AudioDecoder->SetDecoderType(
 			StreamType == STREAM_TYPE_AAC ?
-				DirectShow::AudioDecoderFilter::DecoderType::AAC :
+				(
+#ifdef LIBISDB_HAS_FDK_AAC
+				m_AACDecoderType == AACDecoderType::FDK_AAC ?
+					DirectShow::AudioDecoderFilter::DecoderType::FDK_AAC :
+#endif
+					DirectShow::AudioDecoderFilter::DecoderType::AAC) :
+			StreamType == STREAM_TYPE_MPEG4_AUDIO ?
+				// ISO/IEC 14496-3 LATM(LOAS)。8K放送等で使用される。
+				// FDK-AACは内部構造上8chまでしかデコードできないが、
+				// 何chの音声が来るかはPMTだけでは分からず、EITの
+				// component_typeは録画ファイルや受信直後には
+				// 得られないことが多く信頼できない。そのため、
+				// libavcodecが利用可能な場合は8ch以下も含めて常に
+				// そちらを使用し、事前のチャンネル数判定を不要にする
+				(
+#ifdef LIBISDB_HAS_LIBAV_AAC
+					DirectShow::AudioDecoderFilter::DecoderType::AAC_LATM_LIBAV
+#elif defined(LIBISDB_HAS_FDK_AAC)
+					DirectShow::AudioDecoderFilter::DecoderType::AAC_LATM
+#else
+					DirectShow::AudioDecoderFilter::DecoderType::Invalid
+#endif
+				) :
 			StreamType == STREAM_TYPE_MPEG1_AUDIO ||
 			StreamType == STREAM_TYPE_MPEG2_AUDIO ?
 				DirectShow::AudioDecoderFilter::DecoderType::MPEGAudio :
@@ -2107,4 +2444,4 @@ void ViewerFilter::OnVideoInfoUpdated(const DirectShow::VideoParser::VideoInfo &
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

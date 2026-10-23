@@ -69,6 +69,7 @@ namespace LibISDB
 		void OnServiceChanged(uint16_t ServiceID) override;
 		void OnVideoStreamTypeChanged(uint8_t StreamType) override;
 		void OnAudioStreamTypeChanged(uint8_t StreamType) override;
+		void OnAudioComponentTypeChanged(uint8_t ComponentType) override;
 
 		void UpdateVideoAndAudioPID();
 
@@ -78,7 +79,7 @@ namespace LibISDB
 		bool m_PlayRadio;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_VIEWER_ENGINE_H
+#endif // ifndef LIBISDB_VIEWER_ENGINE_H
