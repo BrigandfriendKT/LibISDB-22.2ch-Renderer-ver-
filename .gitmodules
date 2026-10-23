@@ -1,3 +1,0 @@
-[submodule "Thirdparty/fdk-aac"]
-	path = Thirdparty/fdk-aac
-	url = https://github.com/mstorsjo/fdk-aac.git
