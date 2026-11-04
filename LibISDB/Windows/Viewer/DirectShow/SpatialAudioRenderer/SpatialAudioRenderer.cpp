@@ -34,6 +34,7 @@
 */
 
 
+#include <cmath>
 #include "../../../../LibISDBPrivate.hpp"
 #include "../../../../LibISDBWindows.hpp"
 #include "SpatialAudioRenderer.hpp"
@@ -101,6 +102,8 @@ SpatialAudioRenderer::SpatialAudioRenderer(LPUNKNOWN pUnk, HRESULT *phr)
 
 SpatialAudioRenderer::~SpatialAudioRenderer()
 {
+	delete m_pBasicAudio;
+	m_pBasicAudio = nullptr;
 	FinalizeSpatialAudio();
 	::DeleteCriticalSection(&m_RingLock);
 }
@@ -360,6 +363,7 @@ bool SpatialAudioRenderer::InitializeSpatialAudio()
 	m_Buffering = true;
 	m_ReadFrac = 0.0;
 	m_RateAdjust = 1.0;
+	m_CurrentGain = m_TargetGain.load();
 
 	hr = m_pRenderStream->Start();
 	if (FAILED(hr)) {
@@ -457,7 +461,78 @@ STDMETHODIMP SpatialAudioRenderer::NonDelegatingQueryInterface(REFIID riid, void
 	if (riid == IID_IReferenceClock)
 		return E_NOINTERFACE;
 
+	// 音量(IBasicAudio)。必要になった時に作る(CBaseRendererが
+	// IMediaPositionの実装を作るのと同じ方式)
+	if (riid == IID_IBasicAudio) {
+		CAutoLock Lock(&m_BasicAudioLock);
+		if (m_pBasicAudio == nullptr) {
+			m_pBasicAudio = new SpatialAudioBasicAudio(CBaseFilter::GetOwner(), this);
+			if (m_pBasicAudio == nullptr)
+				return E_OUTOFMEMORY;
+		}
+		return m_pBasicAudio->NonDelegatingQueryInterface(riid, ppv);
+	}
+
 	return CBaseRenderer::NonDelegatingQueryInterface(riid, ppv);
+}
+
+
+HRESULT SpatialAudioRenderer::SetVolumeLevel(long lVolume)
+{
+	if ((lVolume < -10000) || (lVolume > 0))
+		return E_INVALIDARG;
+
+	m_Volume = lVolume;
+	// 1/100dB単位 -> 線形の倍率。-100dB以下は無音とする
+	m_TargetGain = (lVolume <= -10000)
+		? 0.0f
+		: static_cast<float>(std::pow(10.0, static_cast<double>(lVolume) / 2000.0));
+	return S_OK;
+}
+
+
+HRESULT SpatialAudioRenderer::SetBalanceLevel(long lBalance)
+{
+	if ((lBalance < -10000) || (lBalance > 10000))
+		return E_INVALIDARG;
+
+	m_Balance = lBalance;
+	return S_OK;
+}
+
+
+SpatialAudioBasicAudio::SpatialAudioBasicAudio(LPUNKNOWN pUnk, SpatialAudioRenderer *pRenderer)
+	: CBasicAudio(NAME("Spatial Audio Renderer BasicAudio"), pUnk)
+	, m_pRenderer(pRenderer)
+{
+}
+
+
+STDMETHODIMP SpatialAudioBasicAudio::put_Volume(long lVolume)
+{
+	return m_pRenderer->SetVolumeLevel(lVolume);
+}
+
+
+STDMETHODIMP SpatialAudioBasicAudio::get_Volume(long *plVolume)
+{
+	CheckPointer(plVolume, E_POINTER);
+	*plVolume = m_pRenderer->GetVolumeLevel();
+	return S_OK;
+}
+
+
+STDMETHODIMP SpatialAudioBasicAudio::put_Balance(long lBalance)
+{
+	return m_pRenderer->SetBalanceLevel(lBalance);
+}
+
+
+STDMETHODIMP SpatialAudioBasicAudio::get_Balance(long *plBalance)
+{
+	CheckPointer(plBalance, E_POINTER);
+	*plBalance = m_pRenderer->GetBalanceLevel();
+	return S_OK;
 }
 
 
@@ -622,6 +697,13 @@ void SpatialAudioRenderer::RenderThreadProc()
 			m_PosFrac[i] = static_cast<float>(Pos - static_cast<double>(Index));
 		}
 
+		// 音量(IBasicAudio)。変更が急だとクリックノイズになるため、
+		// 1回分の出力の中で、前回の倍率から目標の倍率へ直線的に変化させる
+		const float GainStart = m_CurrentGain;
+		const float GainEnd = m_TargetGain.load();
+		const float GainStep = (GainEnd - GainStart) / static_cast<float>((std::max)(FrameCount, 1u));
+		m_CurrentGain = GainEnd;
+
 		for (SpatialObjectSlot &Slot : m_Slots) {
 			if (!Slot.Object)
 				continue;
@@ -664,6 +746,8 @@ void SpatialAudioRenderer::RenderThreadProc()
 					const UINT32 DistanceFromEnd = static_cast<UINT32>(OutCount - i);
 					v *= static_cast<float>(DistanceFromEnd) / static_cast<float>(FadeSamples);
 				}
+
+				v *= GainStart + GainStep * static_cast<float>(i);
 
 				// LFE1+LFE2の単純加算等でフルスケールを超えることがあるため、
 				//念のためクリップしておく

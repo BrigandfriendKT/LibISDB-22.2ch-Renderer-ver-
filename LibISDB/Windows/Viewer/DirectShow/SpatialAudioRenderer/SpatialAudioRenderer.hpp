@@ -64,6 +64,29 @@
 namespace LibISDB::DirectShow
 {
 
+	class SpatialAudioRenderer;
+
+	/**
+	 IBasicAudio(音量)の実装。
+	 TVTestの音量バーは、フィルタグラフ経由でレンダラのIBasicAudio::put_Volume()を
+	 呼んで音量を変える。レンダラがこのインターフェースを持たないと、
+	 音量バーを操作しても何も変わらない
+	*/
+	class SpatialAudioBasicAudio
+		: public CBasicAudio
+	{
+	public:
+		SpatialAudioBasicAudio(LPUNKNOWN pUnk, SpatialAudioRenderer *pRenderer);
+
+		STDMETHODIMP put_Volume(long lVolume) override;
+		STDMETHODIMP get_Volume(long *plVolume) override;
+		STDMETHODIMP put_Balance(long lBalance) override;
+		STDMETHODIMP get_Balance(long *plBalance) override;
+
+	private:
+		SpatialAudioRenderer *m_pRenderer;
+	};
+
 	/** Windows空間オーディオ(Windows Sonic for Headphones)用レンダラ */
 	class SpatialAudioRenderer
 		: public CBaseRenderer
@@ -94,6 +117,13 @@ namespace LibISDB::DirectShow
 		  行う。実際の接続可否の最終判断はCheckMediaType()で行う)
 		*/
 		static bool IsAvailable();
+
+		// 音量(IBasicAudioの単位。0=最大、-10000=無音、1/100dB単位)
+		HRESULT SetVolumeLevel(long lVolume);
+		long GetVolumeLevel() const { return m_Volume; }
+		// 左右バランス(-10000〜10000)。現状は値を保持するだけで、出力には反映しない
+		HRESULT SetBalanceLevel(long lBalance);
+		long GetBalanceLevel() const { return m_Balance; }
 
 		// このレンダラが要求する固定フォーマット(外部からも参照するためpublic)
 		static constexpr int SOURCE_CHANNELS = LatmSpatial::RAW_CHANNEL_COUNT; // 24
@@ -158,6 +188,14 @@ namespace LibISDB::DirectShow
 		std::vector<float> m_PosFrac;
 
 		bool m_Initialized;
+
+		// 音量(IBasicAudio)
+		CCritSec m_BasicAudioLock;
+		SpatialAudioBasicAudio *m_pBasicAudio = nullptr;
+		std::atomic<long> m_Volume{0};
+		std::atomic<long> m_Balance{0};
+		std::atomic<float> m_TargetGain{1.0f}; // 音量から求めた、目標の倍率(線形)
+		float m_CurrentGain = 1.0f;             // 描画スレッドが現在使っている倍率(音量変更時のクリックノイズ防止用)
 	};
 
 }	// namespace LibISDB::DirectShow
