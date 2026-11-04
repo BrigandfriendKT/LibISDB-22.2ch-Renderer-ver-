@@ -24,6 +24,9 @@
 */
 
 
+#include <cmath>
+#include <string>
+#include <algorithm>
 #include "../../../../LibISDBPrivate.hpp"
 
 
@@ -515,7 +518,65 @@ int AACLATMDecoder_Libav::ConvertFrame(const AVFrame *pFrame, int16_t *pDst)
 		}
 	}
 
+	if (UsedBuckets == 2)
+		AccumulateLevelDiag(pFrame, pDst, Samples);
+
 	return UsedBuckets;
+}
+
+
+void AACLATMDecoder_Libav::AccumulateLevelDiag(const AVFrame *pFrame, const int16_t *pDst, int Samples)
+{
+	const int InChannels = (std::min)(pFrame->ch_layout.nb_channels, 24);
+	for (int ch = 0; ch < InChannels; ch++) {
+		const float *pSrc = reinterpret_cast<const float *>(pFrame->extended_data[ch]);
+		double Sum = 0.0;
+		for (int i = 0; i < Samples; i++)
+			Sum += static_cast<double>(pSrc[i]) * static_cast<double>(pSrc[i]);
+		m_DiagInSum[ch] += Sum;
+		m_DiagInChannel[ch] = static_cast<int>(::av_channel_layout_channel_from_index(&pFrame->ch_layout, ch));
+	}
+	m_DiagInCount = InChannels;
+
+	double SumL = 0.0, SumR = 0.0;
+	for (int i = 0; i < Samples; i++) {
+		const double L = pDst[static_cast<size_t>(i) * 2];
+		const double R = pDst[static_cast<size_t>(i) * 2 + 1];
+		SumL += L * L;
+		SumR += R * R;
+	}
+	m_DiagOutSum[0] += SumL;
+	m_DiagOutSum[1] += SumR;
+	m_DiagSamples += Samples;
+
+	// 約5秒(48kHz)ごとに出力する
+	if (m_DiagSamples < 48000 * 5)
+		return;
+
+	const double N = static_cast<double>(m_DiagSamples);
+	auto ToDb = [](double MeanSquare) {
+		return 10.0 * std::log10(MeanSquare + 1.0e-12);
+	};
+
+	std::wstring Line = L"[LatmSpatial] 2ch level (5s, dBFS) IN:";
+	wchar_t Tmp[96];
+	for (int ch = 0; ch < m_DiagInCount; ch++) {
+		const LibISDB::CharType *pName = LatmDownmix::NameFromChannel(static_cast<AVChannel>(m_DiagInChannel[ch]));
+		swprintf_s(Tmp, L" %ls=%.1f", pName != nullptr ? pName : L"?", ToDb(m_DiagInSum[ch] / N));
+		Line += Tmp;
+	}
+	// 出力はint16のため、フルスケール(32768)で正規化する
+	const double Scale = 32768.0 * 32768.0;
+	const double OutL = ToDb(m_DiagOutSum[0] / N / Scale);
+	const double OutR = ToDb(m_DiagOutSum[1] / N / Scale);
+	swprintf_s(Tmp, L" | OUT: L=%.1f R=%.1f diff(L-R)=%.1f\n", OutL, OutR, OutL - OutR);
+	Line += Tmp;
+	::OutputDebugStringW(Line.c_str());
+
+	for (double &v : m_DiagInSum)
+		v = 0.0;
+	m_DiagOutSum[0] = m_DiagOutSum[1] = 0.0;
+	m_DiagSamples = 0;
 }
 
 

@@ -114,6 +114,16 @@ namespace LibISDB::DirectShow
 		// iniファイル(あれば)または組み込み定義から読み込み、m_Matrixへ格納する
 		void ResolveDownmixMatrix();
 
+		// 2chダウンミックス時の左右バランス調査用の診断ログ。
+		// 約5秒ごとに、入力24chそれぞれと、出力L/Rのレベル(dBFS)を
+		// OutputDebugStringへ出力する
+		void AccumulateLevelDiag(const AVFrame *pFrame, const int16_t *pDst, int Samples);
+		double m_DiagInSum[24] = {};
+		int m_DiagInChannel[24] = {}; // AVChannelの値(このヘッダではAVChannel型が未宣言のためintで保持する)
+		int m_DiagInCount = 0;
+		double m_DiagOutSum[2] = {};
+		int64_t m_DiagSamples = 0;
+
 		AVCodecContext *m_pCodecContext;
 		AVCodecParserContext *m_pParser;
 		AVPacket *m_pPacket;

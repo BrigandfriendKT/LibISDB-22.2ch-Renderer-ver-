@@ -1134,16 +1134,26 @@ HRESULT AudioDecoderFilter::ProcessPCM(
 				break;
 			}
 
-			// 24chの並び(LatmSpatial::RawChannelOrder)の先頭6chは
-			// FL,FR,FC,LFE,BL,BR、SL/SRは9,10番目
-			static const int Slot8ch[8] = {0, 1, 2, 3, 4, 5, 9, 10};
+			// 24chの並びは、LatmSpatial::RawChannelOrder
+			// (LatmSpatialChannelMap.cpp。空間オーディオ用レンダラの
+			// スロット番号と同じ)に従う。FFmpegの標準的な22.2の並び
+			// (FL,FR,FC,LFE,...)とは異なる点に注意:
+			//   0:FC 1:FLC 2:FRC 3:FL 4:FR 5:SL 6:SR 7:BL 8:BR 9:BC
+			//   10:TFC 11:TFL 12:TFR 13:TSL 14:TSR 15:TC 16:TBL 17:TBR
+			//   18:TBC 19:BFC 20:BFL 21:BFR 22:LFE 23:LFE2
+			// 拡張前のチャンネル順は、Windows標準の並び
+			// (FL,FR[,FC,LFE,BL,BR[,SL,SR]])
+			static const int Slots2ch[2] = {3, 4};
+			static const int Slots6ch[6] = {3, 4, 0, 22, 7, 8};
+			static const int Slots8ch[8] = {3, 4, 0, 22, 7, 8, 5, 6};
+			const int *pSlots =
+				(NarrowChannels == 8) ? Slots8ch :
+				(NarrowChannels == 6) ? Slots6ch : Slots2ch;
 			int16_t *pDst = reinterpret_cast<int16_t *>(pOutBuff);
 			std::memset(pDst, 0, BuffSize);
 			for (size_t i = 0; i < Samples; i++) {
-				for (int c = 0; c < NarrowChannels; c++) {
-					const int Slot = (NarrowChannels == 8) ? Slot8ch[c] : c;
-					pDst[i * 24 + Slot] = pWork[i * NarrowChannels + c];
-				}
+				for (int c = 0; c < NarrowChannels; c++)
+					pDst[i * 24 + pSlots[c]] = pWork[i * NarrowChannels + c];
 			}
 			OutSize = Samples * 24 * sizeof(int16_t);
 		} else
