@@ -762,8 +762,16 @@ bool ViewerFilter::BuildAudioRenderer(COMPointer<IPin> &OutputAudioPin)
 	// フォールバックする(接続に失敗したフィルタはグラフから
 	// 自動的に取り除かれるため、後続処理に影響しない)
 	// Matrixモードでは空間オーディオを試さず、直接チャンネルマトリクス出力へ進む
-	if ((m_AudioOutputMode != AudioOutputMode::Matrix)
-			&& DirectShow::IsSpatialAudioRendererAvailable()) {
+	//
+	// また、ダウンミックス先が選ばれている(「ダウンミックスしない」ではない)
+	// 場合も、空間オーディオ用レンダラは24chしか受け付けないため、最初から
+	// 試さない。試すと、DirectShowが接続できる中間フィルタの組み合わせを
+	// 総当たりで探すため、失敗するまでに非常に長い時間がかかる
+	// (実測で約15秒、CheckMediaType()が1万回以上呼ばれて画面が固まる)
+	const bool TrySpatial =
+		(m_AudioOutputMode != AudioOutputMode::Matrix)
+		&& m_AudioDecoder && (m_AudioDecoder->GetLatmDownmixChannels() == 0);
+	if (TrySpatial && DirectShow::IsSpatialAudioRendererAvailable()) {
 		HRESULT hrSpatial = S_OK;
 		COMPointer<IBaseFilter> SpatialRenderer;
 
@@ -946,6 +954,17 @@ bool ViewerFilter::RebuildAudioRenderer(bool CanStopGraph)
 	if (FAILED(m_GraphBuilder.QueryInterface(&MediaControl)))
 		return false;
 
+	// 繋ぎ直しで新しいレンダラになると、音量が初期値(最大)に戻ってしまう
+	// (TVTestは音量を一度設定するだけのため)。今のレンダラの音量を控えて
+	// おき、繋ぎ直した後に設定し直す
+	long SavedVolume = 0;
+	bool HasSavedVolume = false;
+	{
+		COMPointer<IBasicAudio> BasicAudio;
+		if (SUCCEEDED(m_GraphBuilder.QueryInterface(&BasicAudio)))
+			HasSavedVolume = SUCCEEDED(BasicAudio->get_Volume(&SavedVolume));
+	}
+
 	OAFilterState State;
 	MediaControl->GetState(200, &State);
 	const bool WasRunning = (State == State_Running);
@@ -997,6 +1016,12 @@ bool ViewerFilter::RebuildAudioRenderer(bool CanStopGraph)
 	bool OK = false;
 	if (OutputAudioPin) {
 		OK = BuildAudioRenderer(OutputAudioPin);
+	}
+
+	if (OK && HasSavedVolume) {
+		COMPointer<IBasicAudio> BasicAudio;
+		if (SUCCEEDED(m_GraphBuilder.QueryInterface(&BasicAudio)))
+			BasicAudio->put_Volume(SavedVolume);
 	}
 
 	if (NeedStateRestore) {
