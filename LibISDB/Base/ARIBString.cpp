@@ -110,6 +110,7 @@ bool ARIBStringDecoder::DecodeInternal(
 
 	const bool IsCaption = !!(Flags & DecodeFlag::Caption);
 	const bool Is1Seg    = !!(Flags & DecodeFlag::OneSeg);
+	const bool IsLatin   = !!(Flags & DecodeFlag::Latin);
 
 	// 状態初期設定
 	m_ESCSeqCount = 0;
@@ -120,7 +121,13 @@ bool ARIBStringDecoder::DecodeInternal(
 	m_CodeG[2] = CodeSet::Hiragana;
 	m_CodeG[3] = IsCaption ? CodeSet::Macro : CodeSet::Katakana;
 
-	if (IsCaption && Is1Seg) {
+	if (IsLatin) {
+		m_CodeG[0] = CodeSet::Alphanumeric;
+		m_CodeG[2] = CodeSet::LatinExtension;
+		m_CodeG[3] = CodeSet::LatinSpecial;
+		m_LockingGL = 0;
+		m_LockingGR = 2;
+	} else if (IsCaption && Is1Seg) {
 		m_CodeG[1] = CodeSet::DRCS_1;
 		m_LockingGL = 1;
 		m_LockingGR = 0;
@@ -129,7 +136,7 @@ bool ARIBStringDecoder::DecodeInternal(
 		m_LockingGR = 2;
 	}
 
-	m_CharSize = CharSize::Normal;
+	m_CharSize = IsLatin ? CharSize::Medium : CharSize::Normal;
 	if (IsCaption) {
 		m_CharColorIndex = 7;
 		m_BackColorIndex = 8;
@@ -143,9 +150,11 @@ bool ARIBStringDecoder::DecodeInternal(
 	m_RPC = 1;
 
 	m_IsCaption = IsCaption;
+	m_IsLatin = IsLatin;
 	m_pFormatList = FormatList ? &*FormatList : nullptr;
 	m_pDRCSMap = pDRCSMap;
 
+	m_IsUCS         = !!(Flags & DecodeFlag::UCS);
 	m_UseCharSize   = !!(Flags & DecodeFlag::UseCharSize);
 	m_UnicodeSymbol = !!(Flags & DecodeFlag::UnicodeSymbol);
 
@@ -153,9 +162,9 @@ bool ARIBStringDecoder::DecodeInternal(
 	// 一応 UNICODE でなくてもコンパイルできるようにはしているが、
 	// 日本語ロケール(CP932)以外では多くの文字が変換できないため実用にならない
 	InternalString String;
-	bool Result = DecodeString(pSrcData, SrcLength, &String);
+	const bool Result = DecodeString(pSrcData, SrcLength, &String);
 	if (!String.empty()) {
-		int Length = ::WideCharToMultiByte(
+		const int Length = ::WideCharToMultiByte(
 			CP_ACP, 0, String.data(), static_cast<int>(String.length()), nullptr, 0, nullptr, nullptr);
 		if (Length > 0) {
 			DstString->resize(Length);
@@ -174,8 +183,44 @@ bool ARIBStringDecoder::DecodeString(const uint8_t *pSrcData, size_t SrcLength, 
 {
 	for (size_t SrcPos = 0; SrcPos < SrcLength; SrcPos++) {
 		if (m_ESCSeqCount == 0) {
-			// GL/GR領域
-			if ((pSrcData[SrcPos] >= 0x21) && (pSrcData[SrcPos] <= 0x7E)) {
+			if (m_IsUCS && (((pSrcData[SrcPos] >= 0x21) && (pSrcData[SrcPos] <= 0x7E))
+					|| ((pSrcData[SrcPos] >= 0x80)
+						&& ((pSrcData[SrcPos] != 0xC2) || (SrcLength - SrcPos < 2)
+							|| (pSrcData[SrcPos + 1] < 0x80) || (pSrcData[SrcPos + 1] >= 0xA1))))) {
+				// UCSの制御コード以外
+				if (pSrcData[SrcPos] >= 0xFE) {
+					// UTF-16のBOM。未サポート
+					return false;
+				}
+				size_t OldLength = pDstString->length();
+				uint32_t CodePoint;
+				const size_t CodeLength = UTF8ToCodePoint(pSrcData + SrcPos, SrcLength - SrcPos, &CodePoint);
+
+				if (CodePoint == 0) {
+					*pDstString += TOFU_STR;
+				} else if ((CodePoint >= 0xEC00) && (CodePoint <= 0xF8FF)) {
+					// U+EC00以降の私用領域はDRCS
+					PutDRCSChar(static_cast<uint16_t>(CodePoint), pDstString);
+#ifdef LIBISDB_ARIB_STR_IS_WCHAR
+				} else if (CodePoint >= 0x10000) {
+					// サロゲートペア
+					*pDstString += static_cast<InternalChar>(0xD800 | ((CodePoint - 0x10000) >> 10));
+					*pDstString += static_cast<InternalChar>(0xDC00 | ((CodePoint - 0x10000) & 0x03FF));
+				} else {
+					*pDstString += static_cast<InternalChar>(CodePoint);
+#else
+				} else {
+					for (size_t i = 0; i < CodeLength; i++)
+						*pDstString += static_cast<InternalChar>(pSrcData[SrcPos + i]);
+#endif
+				}
+				for (; m_RPC > 1; m_RPC--) {
+					const size_t Length = pDstString->length();
+					*pDstString += pDstString->substr(OldLength);
+					OldLength = Length;
+				}
+				SrcPos += CodeLength - 1;
+			} else if (!m_IsUCS && (pSrcData[SrcPos] >= 0x21) && (pSrcData[SrcPos] <= 0x7E)) {
 				// GL領域
 				const CodeSet CurCodeSet = m_CodeG[(m_SingleGL >= 0) ? m_SingleGL : m_LockingGL];
 				m_SingleGL = -1;
@@ -190,7 +235,7 @@ bool ARIBStringDecoder::DecodeString(const uint8_t *pSrcData, size_t SrcLength, 
 					// 1バイトコード
 					DecodeChar(pSrcData[SrcPos], CurCodeSet, pDstString);
 				}
-			} else if ((pSrcData[SrcPos] >= 0xA1) && (pSrcData[SrcPos] <= 0xFE)) {
+			} else if (!m_IsUCS && (pSrcData[SrcPos] >= 0xA1) && (pSrcData[SrcPos] <= 0xFE)) {
 				// GR領域
 				const CodeSet CurCodeSet = m_CodeG[m_LockingGR];
 
@@ -206,33 +251,37 @@ bool ARIBStringDecoder::DecodeString(const uint8_t *pSrcData, size_t SrcLength, 
 				}
 			} else {
 				// 制御コード
+				if (m_IsUCS && (pSrcData[SrcPos] == 0xC2)) {
+					// UCSのC1制御コード
+					SrcPos++;
+				}
 				switch (pSrcData[SrcPos]) {
-				case 0x0D:	// APR
+				case 0x0D: // APR
 					*pDstString += ARIB_STR(LIBISDB_NEWLINE);
 					break;
-				case 0x0F:	// LS0
+				case 0x0F: // LS0
 					m_LockingGL = 0;
 					break;
-				case 0x0E:	// LS1
+				case 0x0E: // LS1
 					m_LockingGL = 1;
 					break;
-				case 0x19:	// SS2
+				case 0x19: // SS2
 					m_SingleGL = 2;
 					break;
-				case 0x1D:	// SS3
+				case 0x1D: // SS3
 					m_SingleGL = 3;
 					break;
-				case 0x1B:	// ESC
+				case 0x1B: // ESC
 					m_ESCSeqCount = 1;
 					break;
-				case 0x20:	// SP
+				case 0x20: // SP
 					if (IsSmallCharMode()) {
 						*pDstString += ARIB_STR(' ');
 					} else {
 						*pDstString += ARIB_STR("　");
 					}
 					break;
-				case 0xA0:	// SP
+				case 0xA0: // SP
 					*pDstString += ARIB_STR(' ');
 					break;
 
@@ -248,42 +297,42 @@ bool ARIBStringDecoder::DecodeString(const uint8_t *pSrcData, size_t SrcLength, 
 					SetFormat(pDstString->length());
 					break;
 
-				case 0x88:	// SSZ 小型
+				case 0x88: // SSZ 小型
 					m_CharSize = CharSize::Small;
 					SetFormat(pDstString->length());
 					break;
-				case 0x89:	// MSZ 中型
+				case 0x89: // MSZ 中型
 					m_CharSize = CharSize::Medium;
 					SetFormat(pDstString->length());
 					break;
-				case 0x8A:	// NSZ 標準
+				case 0x8A: // NSZ 標準
 					m_CharSize = CharSize::Normal;
 					SetFormat(pDstString->length());
 					break;
-				case 0x8B:	// SZX 指定サイズ
+				case 0x8B: // SZX 指定サイズ
 					if (++SrcPos >= SrcLength)
 						return false;
 					switch (pSrcData[SrcPos]) {
-					case 0x60: m_CharSize = CharSize::Micro;    break;	// 超小型
-					case 0x41: m_CharSize = CharSize::HighW;    break;	// 縦倍
-					case 0x44: m_CharSize = CharSize::WidthW;   break;	// 横倍
-					case 0x45: m_CharSize = CharSize::SizeW;    break;	// 縦横倍
-					case 0x6B: m_CharSize = CharSize::Special1; break;	// 特殊1
-					case 0x64: m_CharSize = CharSize::Special2; break;	// 特殊2
+					case 0x60: m_CharSize = CharSize::Micro;    break; // 超小型
+					case 0x41: m_CharSize = CharSize::HighW;    break; // 縦倍
+					case 0x44: m_CharSize = CharSize::WidthW;   break; // 横倍
+					case 0x45: m_CharSize = CharSize::SizeW;    break; // 縦横倍
+					case 0x6B: m_CharSize = CharSize::Special1; break; // 特殊1
+					case 0x64: m_CharSize = CharSize::Special2; break; // 特殊2
 					}
 					SetFormat(pDstString->length());
 					break;
 
-				case 0x0C:	// CS
+				case 0x0C: // CS
 					pDstString->push_back(ARIB_STR('\f'));
 					break;
-				case 0x16:	// PAPF
+				case 0x16: // PAPF
 					SrcPos++;
 					break;
-				case 0x1C:	// APS
+				case 0x1C: // APS
 					SrcPos += 2;
 					break;
-				case 0x90:	// COL
+				case 0x90: // COL
 					if (++SrcPos >= SrcLength)
 						return false;
 					if (pSrcData[SrcPos] == 0x20) {
@@ -300,35 +349,35 @@ bool ARIBStringDecoder::DecodeString(const uint8_t *pSrcData, size_t SrcLength, 
 						SetFormat(pDstString->length());
 					}
 					break;
-				case 0x91:	// FLC
+				case 0x91: // FLC
 					SrcPos++;
 					break;
-				case 0x93:	// POL
+				case 0x93: // POL
 					SrcPos++;
 					break;
-				case 0x94:	// WMM
+				case 0x94: // WMM
 					SrcPos++;
 					break;
-				case 0x95:	// MACRO
+				case 0x95: // MACRO
 					do {
 						if (++SrcPos >= SrcLength)
 							return false;
 					} while (pSrcData[SrcPos] != 0x4F);
 					break;
-				case 0x97:	// HLC
+				case 0x97: // HLC
 					SrcPos++;
 					break;
-				case 0x98:	// RPC
+				case 0x98: // RPC
 					if (++SrcPos >= SrcLength)
 						return false;
 					m_RPC = pSrcData[SrcPos] & 0x3F;
 					break;
-				case 0x9B:	//CSI
+				case 0x9B: //CSI
 					{
 						int Length;
 						for (Length = 0; (++SrcPos < SrcLength) && (pSrcData[SrcPos] <= 0x3B); Length++);
 						if (SrcPos < SrcLength) {
-							if (pSrcData[SrcPos] == 0x69) {	// ACS
+							if (pSrcData[SrcPos] == 0x69) { // ACS
 								if (Length != 2)
 									return false;
 								if (pSrcData[SrcPos - 2] >= 0x32) {
@@ -339,7 +388,7 @@ bool ARIBStringDecoder::DecodeString(const uint8_t *pSrcData, size_t SrcLength, 
 						}
 					}
 					break;
-				case 0x9D:	// TIME
+				case 0x9D: // TIME
 					if (++SrcPos >= SrcLength)
 						return false;
 					if (pSrcData[SrcPos] == 0x20) {
@@ -350,7 +399,7 @@ bool ARIBStringDecoder::DecodeString(const uint8_t *pSrcData, size_t SrcLength, 
 					}
 					break;
 
-				default:	// 非対応
+				default: // 非対応
 					break;
 				}
 			}
@@ -403,6 +452,16 @@ void ARIBStringDecoder::DecodeChar(uint16_t Code, CodeSet Set, InternalString *p
 		PutJISKatakanaChar(Code, pDstString);
 		break;
 
+	case CodeSet::LatinExtension:
+		// ラテン文字拡張コード出力
+		PutLatinExtensionChar(Code, pDstString);
+		break;
+
+	case CodeSet::LatinSpecial:
+		// ラテン文字特殊コード出力
+		PutLatinSpecialChar(Code, pDstString);
+		break;
+
 	case CodeSet::AdditionalSymbols:
 		// 追加シンボルコード出力
 		PutSymbolsChar(Code, pDstString);
@@ -440,7 +499,7 @@ void ARIBStringDecoder::DecodeChar(uint16_t Code, CodeSet Set, InternalString *p
 	}
 
 	if ((m_RPC > 1) && (pDstString->length() > OldLength)) {
-		String Str = pDstString->substr(OldLength, pDstString->length() - OldLength);
+		const String Str = pDstString->substr(OldLength, pDstString->length() - OldLength);
 		int Count = m_RPC;
 		while (--Count > 0)
 			*pDstString += Str;
@@ -454,7 +513,7 @@ void ARIBStringDecoder::PutKanjiChar(uint16_t Code, InternalString *pDstString)
 	if (Code >= 0x7521)
 		return PutSymbolsChar(Code, pDstString);
 
-	uint8_t First = Code >> 8, Second = Code & 0x00FF;
+	const uint8_t First = Code >> 8, Second = Code & 0x00FF;
 
 	// 全角 -> 半角英数字変換
 	if (m_UseCharSize && (m_CharSize == CharSize::Medium)) {
@@ -516,7 +575,7 @@ void ARIBStringDecoder::PutKanjiChar(uint16_t Code, InternalString *pDstString)
 
 	// Shift_JIS (CP932) -> UTF-16
 	WCHAR Unicode[2];
-	int Length = ::MultiByteToWideChar(932, MB_PRECOMPOSED, ShiftJIS, 2, Unicode, static_cast<int>(std::size(Unicode)));
+	const int Length = ::MultiByteToWideChar(932, MB_PRECOMPOSED, ShiftJIS, 2, Unicode, static_cast<int>(std::size(Unicode)));
 	if (Length > 0)
 		pDstString->append(Unicode, Length);
 	else
@@ -527,7 +586,7 @@ void ARIBStringDecoder::PutKanjiChar(uint16_t Code, InternalString *pDstString)
 #ifdef LIBISDB_ARIB_STR_IS_UTF8
 	// JIS -> UTF-8 漢字コード変換
 	char Buffer[4];
-	size_t Length = JISX0213KanjiToUTF8(1, Code, Buffer, std::size(Buffer));
+	const size_t Length = JISX0213KanjiToUTF8(1, Code, Buffer, std::size(Buffer));
 	if (Length > 0)
 		pDstString->append(Buffer, Length);
 	else
@@ -535,7 +594,7 @@ void ARIBStringDecoder::PutKanjiChar(uint16_t Code, InternalString *pDstString)
 #else
 	// JIS -> wchar_t 漢字コード変換
 	wchar_t Buffer[2];
-	size_t Length = JISX0213KanjiToWChar(1, Code, Buffer, std::size(Buffer));
+	const size_t Length = JISX0213KanjiToWChar(1, Code, Buffer, std::size(Buffer));
 	if (Length > 0)
 		pDstString->append(Buffer, Length);
 	else
@@ -551,7 +610,7 @@ void ARIBStringDecoder::PutKanjiPlane2Char(uint16_t Code, InternalString *pDstSt
 #ifdef LIBISDB_ARIB_STR_IS_UTF8
 	// JIS X 0213 漢字集合2面 -> UTF-8
 	char Buffer[4];
-	size_t Length = JISX0213KanjiToUTF8(2, Code, Buffer, std::size(Buffer));
+	const size_t Length = JISX0213KanjiToUTF8(2, Code, Buffer, std::size(Buffer));
 	if (Length > 0)
 		pDstString->append(Buffer, Length);
 	else
@@ -559,7 +618,7 @@ void ARIBStringDecoder::PutKanjiPlane2Char(uint16_t Code, InternalString *pDstSt
 #else
 	// JIS X 0213 漢字集合2面 -> wchar_t
 	wchar_t Buffer[2];
-	size_t Length = JISX0213KanjiToWChar(2, Code, Buffer, std::size(Buffer));
+	const size_t Length = JISX0213KanjiToWChar(2, Code, Buffer, std::size(Buffer));
 	if (Length > 0)
 		pDstString->append(Buffer, Length);
 	else
@@ -591,7 +650,7 @@ void ARIBStringDecoder::PutAlphanumericChar(uint16_t Code, InternalString *pDstS
 		ARIB_STR_TABLE_END;
 
 	const ARIBStrTableType * Table =
-		(m_UseCharSize && m_CharSize == CharSize::Medium) ? AlphanumericHalfWidthTable : AlphanumericTable;
+		(m_IsLatin || (m_UseCharSize && m_CharSize == CharSize::Medium)) ? AlphanumericHalfWidthTable : AlphanumericTable;
 
 	*pDstString += Table[Code < 0x20 ? 0 : Code - 0x20];
 }
@@ -643,6 +702,37 @@ void ARIBStringDecoder::PutJISKatakanaChar(uint16_t Code, InternalString *pDstSt
 		ARIB_STR_TABLE_END;
 
 	*pDstString += JISKatakanaTable[(Code < 0x20 || Code >= 0x60) ? 0 : Code - 0x20];
+}
+
+
+void ARIBStringDecoder::PutLatinExtensionChar(uint16_t Code, InternalString *pDstString)
+{
+	// ラテン文字拡張コード変換
+	static const ARIBStrTableType LatinExtensionTable[] =
+		ARIB_STR_TABLE_BEGIN
+		ARIB_STR_TABLE(" ", "\u00a1", "\u00a2", "\u00a3", "\u20ac", "\u00a5", "\u0160", "\u00a7", "\u0161", "\u00a9", "\u00aa", "\u00ab", "\u00ac", "\u00ff", "\u00ae", "\u00af")
+		ARIB_STR_TABLE("\u00b0", "\u00b1", "\u00b2", "\u00b3", "\u017d", "\u03bc", "\u00b6", "\u00b7", "\u017e", "\u00b9", "\u00ba", "\u00bb", "\u0152", "\u0153", "\u0178", "\u00bf")
+		ARIB_STR_TABLE("\u00c0", "\u00c1", "\u00c2", "\u00c3", "\u00c4", "\u00c5", "\u00c6", "\u00c7", "\u00c8", "\u00c9", "\u00ca", "\u00cb", "\u00cc", "\u00cd", "\u00ce", "\u00cf")
+		ARIB_STR_TABLE("\u00d0", "\u00d1", "\u00d2", "\u00d3", "\u00d4", "\u00d5", "\u00d6", "\u00d7", "\u00d8", "\u00d9", "\u00da", "\u00db", "\u00dc", "\u00dd", "\u00de", "\u00df")
+		ARIB_STR_TABLE("\u00e0", "\u00e1", "\u00e2", "\u00e3", "\u00e4", "\u00e5", "\u00e6", "\u00e7", "\u00e8", "\u00e9", "\u00ea", "\u00eb", "\u00ec", "\u00ed", "\u00ee", "\u00ef")
+		ARIB_STR_TABLE("\u00f0", "\u00f1", "\u00f2", "\u00f3", "\u00f4", "\u00f5", "\u00f6", "\u00f7", "\u00f8", "\u00f9", "\u00fa", "\u00fb", "\u00fc", "\u00fd", "\u00fe", " ")
+		ARIB_STR_TABLE_END;
+
+	*pDstString += LatinExtensionTable[Code < 0x20 ? 0 : Code - 0x20];
+}
+
+
+void ARIBStringDecoder::PutLatinSpecialChar(uint16_t Code, InternalString *pDstString)
+{
+	// ラテン文字特殊コード変換
+	static const ARIBStrTableType LatinSpecialTable[] =
+		ARIB_STR_TABLE_BEGIN
+		ARIB_STR_TABLE(" ", "\u266a", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ")
+		ARIB_STR_TABLE("\u00a4", "\u00a6", "\u00a8", "\u00b4", "\u00b8", "\u00bc", "\u00bd", "\u00be", " ", " ", " ", " ", " ", " ", " ", " ")
+		ARIB_STR_TABLE("\u2026", "\u2588", "\u2018", "\u2019", "\u201c", "\u201d", "\u2022", "\u2122", "\u215b", "\u215c", "\u215d", "\u215e", " ", " ", " ", " ")
+		ARIB_STR_TABLE_END;
+
+	*pDstString += LatinSpecialTable[(Code < 0x20 || Code >= 0x50) ? 0 : Code - 0x20];
 }
 
 
@@ -983,11 +1073,11 @@ void ARIBStringDecoder::ProcessEscapeSeq(uint8_t Code)
 	case 1:
 		switch (Code) {
 		// Invocation of code elements
-		case 0x6E: m_LockingGL = 2; m_ESCSeqCount = 0; return;	// LS2
-		case 0x6F: m_LockingGL = 3; m_ESCSeqCount = 0; return;	// LS3
-		case 0x7E: m_LockingGR = 1; m_ESCSeqCount = 0; return;	// LS1R
-		case 0x7D: m_LockingGR = 2; m_ESCSeqCount = 0; return;	// LS2R
-		case 0x7C: m_LockingGR = 3; m_ESCSeqCount = 0; return;	// LS3R
+		case 0x6E: m_LockingGL = 2; m_ESCSeqCount = 0; return; // LS2
+		case 0x6F: m_LockingGL = 3; m_ESCSeqCount = 0; return; // LS3
+		case 0x7E: m_LockingGR = 1; m_ESCSeqCount = 0; return; // LS1R
+		case 0x7D: m_LockingGR = 2; m_ESCSeqCount = 0; return; // LS2R
+		case 0x7C: m_LockingGR = 3; m_ESCSeqCount = 0; return; // LS3R
 
 		// Designation of graphic sets
 		case 0x24:
@@ -995,7 +1085,7 @@ void ARIBStringDecoder::ProcessEscapeSeq(uint8_t Code)
 		case 0x29: m_ESCSeqIndex = 1; break;
 		case 0x2A: m_ESCSeqIndex = 2; break;
 		case 0x2B: m_ESCSeqIndex = 3; break;
-		default:   m_ESCSeqCount = 0; return;	// エラー
+		default:   m_ESCSeqCount = 0; return; // エラー
 		}
 		break;
 
@@ -1012,7 +1102,7 @@ void ARIBStringDecoder::ProcessEscapeSeq(uint8_t Code)
 		case 0x29: m_IsESCSeqDRCS = false; m_ESCSeqIndex = 1; break;
 		case 0x2A: m_IsESCSeqDRCS = false; m_ESCSeqIndex = 2; break;
 		case 0x2B: m_IsESCSeqDRCS = false; m_ESCSeqIndex = 3; break;
-		default:   m_ESCSeqCount = 0;      return;	// エラー
+		default:   m_ESCSeqCount = 0;      return; // エラー
 		}
 		break;
 
@@ -1054,21 +1144,23 @@ bool ARIBStringDecoder::DesignationGSET(uint8_t IndexG, uint8_t Code)
 {
 	// Gのグラフィックセットを割り当てる
 	switch (Code) {
-	case 0x42: m_CodeG[IndexG] = CodeSet::Kanji;                    return true;	// Kanji
-	case 0x4A: m_CodeG[IndexG] = CodeSet::Alphanumeric;             return true;	// Alphanumeric
-	case 0x30: m_CodeG[IndexG] = CodeSet::Hiragana;                 return true;	// Hiragana
-	case 0x31: m_CodeG[IndexG] = CodeSet::Katakana;                 return true;	// Katakana
-	case 0x32: m_CodeG[IndexG] = CodeSet::Mosaic_A;                 return true;	// Mosaic A
-	case 0x33: m_CodeG[IndexG] = CodeSet::Mosaic_B;                 return true;	// Mosaic B
-	case 0x34: m_CodeG[IndexG] = CodeSet::Mosaic_C;                 return true;	// Mosaic C
-	case 0x35: m_CodeG[IndexG] = CodeSet::Mosaic_D;                 return true;	// Mosaic D
-	case 0x36: m_CodeG[IndexG] = CodeSet::ProportionalAlphanumeric; return true;	// Proportional Alphanumeric
-	case 0x37: m_CodeG[IndexG] = CodeSet::ProportionalHiragana;     return true;	// Proportional Hiragana
-	case 0x38: m_CodeG[IndexG] = CodeSet::ProportionalKatakana;     return true;	// Proportional Katakana
-	case 0x49: m_CodeG[IndexG] = CodeSet::JIS_X0201_Katakana;       return true;	// JIS X 0201 Katakana
-	case 0x39: m_CodeG[IndexG] = CodeSet::JIS_KanjiPlane1;          return true;	// JIS compatible Kanji Plane 1
-	case 0x3A: m_CodeG[IndexG] = CodeSet::JIS_KanjiPlane2;          return true;	// JIS compatible Kanji Plane 2
-	case 0x3B: m_CodeG[IndexG] = CodeSet::AdditionalSymbols;        return true;	// Additional symbols
+	case 0x42: m_CodeG[IndexG] = CodeSet::Kanji;                    return true; // Kanji
+	case 0x4A: m_CodeG[IndexG] = CodeSet::Alphanumeric;             return true; // Alphanumeric
+	case 0x30: m_CodeG[IndexG] = CodeSet::Hiragana;                 return true; // Hiragana
+	case 0x31: m_CodeG[IndexG] = CodeSet::Katakana;                 return true; // Katakana
+	case 0x32: m_CodeG[IndexG] = CodeSet::Mosaic_A;                 return true; // Mosaic A
+	case 0x33: m_CodeG[IndexG] = CodeSet::Mosaic_B;                 return true; // Mosaic B
+	case 0x34: m_CodeG[IndexG] = CodeSet::Mosaic_C;                 return true; // Mosaic C
+	case 0x35: m_CodeG[IndexG] = CodeSet::Mosaic_D;                 return true; // Mosaic D
+	case 0x36: m_CodeG[IndexG] = CodeSet::ProportionalAlphanumeric; return true; // Proportional Alphanumeric
+	case 0x37: m_CodeG[IndexG] = CodeSet::ProportionalHiragana;     return true; // Proportional Hiragana
+	case 0x38: m_CodeG[IndexG] = CodeSet::ProportionalKatakana;     return true; // Proportional Katakana
+	case 0x49: m_CodeG[IndexG] = CodeSet::JIS_X0201_Katakana;       return true; // JIS X 0201 Katakana
+	case 0x4B: m_CodeG[IndexG] = CodeSet::LatinExtension;           return true; // Latin Extension
+	case 0x4C: m_CodeG[IndexG] = CodeSet::LatinSpecial;             return true; // Latin Special
+	case 0x39: m_CodeG[IndexG] = CodeSet::JIS_KanjiPlane1;          return true; // JIS compatible Kanji Plane 1
+	case 0x3A: m_CodeG[IndexG] = CodeSet::JIS_KanjiPlane2;          return true; // JIS compatible Kanji Plane 2
+	case 0x3B: m_CodeG[IndexG] = CodeSet::AdditionalSymbols;        return true; // Additional symbols
 	}
 
 	return false;
@@ -1132,4 +1224,38 @@ bool ARIBStringDecoder::IsDoubleByteCodeSet(CodeSet Set)
 }
 
 
-}	// namespace LibISDB
+size_t ARIBStringDecoder::UTF8ToCodePoint(const uint8_t *pData, size_t Length, uint32_t *pCodePoint)
+{
+	*pCodePoint = 0;
+	if (Length == 0) {
+		return 0;
+	} else if ((pData[0] >= 0xC2) && (pData[0] < 0xE0) && (Length >= 2)
+			&& (pData[1] >= 0x80) && (pData[1] < 0xC0)) {
+		*pCodePoint = ((pData[0] & 0x1F) << 6) | (pData[1] & 0x3F);
+		return 2;
+	} else if ((pData[0] >= 0xE0) && (pData[0] < 0xF0) && (Length >= 3)
+			&& (pData[1] >= 0x80) && (pData[1] < 0xC0)
+			&& ((pData[0] & 0x0F) || (pData[1] & 0x20))
+			&& (pData[2] >= 0x80) && (pData[2] < 0xC0)) {
+		*pCodePoint = ((pData[0] & 0x0F) << 12) | ((pData[1] & 0x3F) << 6) | (pData[2] & 0x3F);
+		if ((*pCodePoint >= 0xD800) && (*pCodePoint < 0xE000))
+			*pCodePoint = 0;
+		return 3;
+	} else if ((pData[0] >= 0xF0) && (pData[0] < 0xF8) && (Length >= 4)
+			&& (pData[1] >= 0x80) && (pData[1] < 0xC0)
+			&& ((pData[0] & 0x07) || (pData[1] & 0x30))
+			&& (pData[2] >= 0x80) && (pData[2] < 0xC0)
+			&& (pData[3] >= 0x80) && (pData[3] < 0xC0)) {
+		*pCodePoint = ((pData[0] & 0x07) << 18) | ((pData[1] & 0x3F) << 12)
+			| ((pData[2] & 0x3F) << 6) | (pData[3] & 0x3F);
+		if (*pCodePoint >= 0x110000)
+			*pCodePoint = 0;
+		return 4;
+	} else if (pData[0] < 0x80) {
+		*pCodePoint = pData[0];
+	}
+	return 1;
+}
+
+
+} // namespace LibISDB
