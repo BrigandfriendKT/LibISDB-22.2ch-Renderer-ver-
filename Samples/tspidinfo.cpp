@@ -37,6 +37,7 @@
 #include "../LibISDB/Filters/AsyncStreamingFilter.hpp"
 #include "../LibISDB/Base/StandardStream.hpp"
 #include "../LibISDB/TS/TSInformation.hpp"
+#include "../LibISDB/Utilities/StringFormat.hpp"
 #include "../LibISDB/Utilities/StringUtilities.hpp"
 #include <algorithm>
 #include <iostream>
@@ -60,16 +61,7 @@ private:
 		std::uint16_t PID;
 		std::uint8_t StreamType;
 
-		bool operator == (const ESInfo &rhs) const noexcept
-		{
-			return (PID == rhs.PID)
-				&& (StreamType == rhs.StreamType);
-		}
-
-		bool operator != (const ESInfo &rhs) const noexcept
-		{
-			return !(*this == rhs);
-		}
+		bool operator == (const ESInfo &rhs) const noexcept = default;
 	};
 
 	struct ServicePIDInfo {
@@ -93,12 +85,12 @@ LibISDB::String PIDInfoEngine::GetPIDDescription(std::uint16_t PID) const
 	if (pText != nullptr)
 		Text += pText;
 
-	if (auto it = std::find(m_EMMPIDList.begin(), m_EMMPIDList.end(), PID); it != m_EMMPIDList.end())
+	if (std::ranges::find(m_EMMPIDList, PID) != m_EMMPIDList.end())
 		Text += LIBISDB_STR("EMM");
 
 	for (auto &Service : m_ServiceList) {
 		LibISDB::CharType ServiceText[8];
-		LibISDB::StringPrintf(ServiceText, std::size(ServiceText), LIBISDB_STR("[%04X]"), Service.ServiceID);
+		LibISDB::StringFormat(ServiceText, LIBISDB_STR("[{:04X}]"), Service.ServiceID);
 
 		for (std::uint16_t PMT : Service.PMTPID) {
 			if (PMT == PID) {
@@ -166,30 +158,24 @@ void PIDInfoEngine::OnPMTUpdated(LibISDB::AnalyzerFilter *pAnalyzer, std::uint16
 
 	pAnalyzer->GetServiceInfoByID(ServiceID, &ServiceInfo);
 
-	auto itService = std::find_if(
-		m_ServiceList.begin(), m_ServiceList.end(),
-		[ServiceID](const ServicePIDInfo &Info) -> bool {
-			return Info.ServiceID == ServiceID;
-		});
+	auto itService = std::ranges::find(
+		m_ServiceList, ServiceID, &ServicePIDInfo::ServiceID);
 	if (itService == m_ServiceList.end()) {
 		m_ServiceList.emplace_back();
 		itService = --m_ServiceList.end();
 		itService->ServiceID = ServiceID;
 	}
 
-	auto itPMT = std::find(
-		itService->PMTPID.begin(), itService->PMTPID.end(), ServiceInfo.PMTPID);
+	auto itPMT = std::ranges::find(itService->PMTPID, ServiceInfo.PMTPID);
 	if (itPMT == itService->PMTPID.end())
 		itService->PMTPID.push_back(ServiceInfo.PMTPID);
 
-	auto itPCR = std::find(
-		itService->PCRPID.begin(), itService->PCRPID.end(), ServiceInfo.PCRPID);
+	auto itPCR = std::ranges::find(itService->PCRPID, ServiceInfo.PCRPID);
 	if (itPCR == itService->PCRPID.end())
 		itService->PCRPID.push_back(ServiceInfo.PCRPID);
 
 	for (const auto &ECM : ServiceInfo.ECMList) {
-		auto itECM = std::find(
-			itService->ECMPID.begin(), itService->ECMPID.end(), ECM.PID);
+		auto itECM = std::ranges::find(itService->ECMPID, ECM.PID);
 		if (itECM == itService->ECMPID.end())
 			itService->ECMPID.push_back(ECM.PID);
 	}
@@ -200,8 +186,7 @@ void PIDInfoEngine::OnPMTUpdated(LibISDB::AnalyzerFilter *pAnalyzer, std::uint16
 		Info.PID = ES.PID;
 		Info.StreamType = ES.StreamType;
 
-		auto itES = std::find(
-			itService->ESList.begin(), itService->ESList.end(), Info);
+		auto itES = std::ranges::find(itService->ESList, Info);
 		if (itES == itService->ESList.end())
 			itService->ESList.push_back(Info);
 	}
@@ -214,7 +199,7 @@ void PIDInfoEngine::OnCATUpdated(LibISDB::AnalyzerFilter *pAnalyzer)
 
 	if (pAnalyzer->GetEMMPIDList(&List)) {
 		for (std::uint16_t PID : List) {
-			auto it = std::find(m_EMMPIDList.begin(), m_EMMPIDList.end(), PID);
+			auto it = std::ranges::find(m_EMMPIDList, PID);
 			if (it == m_EMMPIDList.end())
 				m_EMMPIDList.push_back(PID);
 		}

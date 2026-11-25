@@ -345,11 +345,11 @@ int main(int argc, char **argv)
 			JSON.EndObject();
 		}
 
-		JSON.EndArray();	// "eventList"
+		JSON.EndArray(); // "eventList"
 		JSON.EndObject();
 	}
 
-	JSON.EndArray();	// "serviceList"
+	JSON.EndArray(); // "serviceList"
 	JSON.EndObject();
 
 	return 0;
