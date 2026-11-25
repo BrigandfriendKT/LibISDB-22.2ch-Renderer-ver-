@@ -49,11 +49,11 @@ namespace LibISDB
 			void operator () (std::FILE *p) const {}
 		};
 
-		FileStreamGenericC();
-		FileStreamGenericC(const Closer &closer);
+		FileStreamGenericC() noexcept;
+		FileStreamGenericC(const Closer &closer) noexcept;
 		~FileStreamGenericC();
 
-		bool Open(const CStringView &FileName, OpenFlag Flags) override;
+		bool Open(const String &FileName, OpenFlag Flags) override;
 		bool Close() override;
 		bool IsOpen() const override;
 
@@ -71,7 +71,7 @@ namespace LibISDB
 		std::unique_ptr<std::FILE, Closer> m_File;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_FILE_STREAM_GENERIC_C_H
+#endif // ifndef LIBISDB_FILE_STREAM_GENERIC_C_H

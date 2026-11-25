@@ -39,4 +39,4 @@ DataStorage * MemoryDataStorageManager::CreateDataStorage()
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

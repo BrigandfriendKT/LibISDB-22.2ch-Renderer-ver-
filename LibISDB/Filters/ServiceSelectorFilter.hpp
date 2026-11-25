@@ -70,7 +70,7 @@ namespace LibISDB
 		DataStreamSequence<TSPacket> m_PacketSequence;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_SERVICE_SELECTOR_FILTER_H
+#endif // ifndef LIBISDB_SERVICE_SELECTOR_FILTER_H

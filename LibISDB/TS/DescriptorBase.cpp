@@ -74,7 +74,7 @@ bool DescriptorBase::Parse(const uint8_t *pData, uint16_t DataLength)
 }
 
 
-void DescriptorBase::Reset()
+void DescriptorBase::Reset() noexcept
 {
 	m_Tag = 0;
 	m_Length = 0;
@@ -88,4 +88,4 @@ bool DescriptorBase::StoreContents(const uint8_t *pPayload)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

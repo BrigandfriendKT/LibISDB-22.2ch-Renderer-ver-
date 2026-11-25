@@ -29,7 +29,11 @@
 #include "VideoRenderer_madVR.hpp"
 #include <d3d9.h>
 #include <initguid.h>
+LIBISDB_PRAGMA_MSVC(warning(push))
+// warning C4828: The file contains a character starting at offset 0xNN that is illegal in the current source character set (codepage NN).
+LIBISDB_PRAGMA_MSVC(warning(disable: 4828))
 #include "../../../../../Thirdparty/madVR/mvrInterfaces.h"
+LIBISDB_PRAGMA_MSVC(warning(pop))
 #include "../../../../Base/DebugDef.hpp"
 
 
@@ -50,7 +54,7 @@ COMMemoryPointer<> VideoRenderer_madVR::GetCurrentImage()
 
 		if (SUCCEEDED(m_Renderer.QueryInterface(&FrameGrabber))) {
 			LPVOID pDIB = nullptr;
-			HRESULT hr = FrameGrabber->GrabFrame(
+			const HRESULT hr = FrameGrabber->GrabFrame(
 				ZOOM_100_PERCENT,
 				0,
 				CHROMA_UPSCALING_USER_SELECTED,
@@ -65,7 +69,7 @@ COMMemoryPointer<> VideoRenderer_madVR::GetCurrentImage()
 #ifdef LIBISDB_ENABLE_TRACE
 					const BITMAPINFOHEADER *pbmih = static_cast<const BITMAPINFOHEADER *>(pDIB);
 					LIBISDB_TRACE(
-						LIBISDB_STR("IMadVRFrameGrabber::GrabFrame() %d x %d (%d)\n"),
+						LIBISDB_STR("IMadVRFrameGrabber::GrabFrame() {} x {} ({})\n"),
 						pbmih->biWidth, pbmih->biHeight, pbmih->biBitCount);
 #endif
 
@@ -79,7 +83,7 @@ COMMemoryPointer<> VideoRenderer_madVR::GetCurrentImage()
 				::LocalFree(pDIB);
 			}
 
-			LIBISDB_TRACE(LIBISDB_STR("IMadVRFrameGrabber::GrabFrame() Failed %x\n"), hr);
+			LIBISDB_TRACE(LIBISDB_STR("IMadVRFrameGrabber::GrabFrame() Failed {:x}\n"), hr);
 		}
 #ifdef LIBISDB_ENABLE_TRACE
 		else {
@@ -98,4 +102,12 @@ const CLSID & VideoRenderer_madVR::GetCLSID()
 }
 
 
-}	// namespace LibISDB::DirectShow
+HWND VideoRenderer_madVR::FindVideoWindow()
+{
+	if (m_hwndRender == nullptr)
+		return nullptr;
+	return ::FindWindowEx(m_hwndRender, nullptr, TEXT("madVR"), nullptr);
+}
+
+
+} // namespace LibISDB::DirectShow

@@ -71,7 +71,7 @@ bool OneSegPATGenerator::StorePacket(const TSPacket *pPacket)
 			if ((PID != PID_NIT) && !m_HasPAT) {
 				if (!m_GeneratePAT) {
 					// PMTがPAT_GEN_PMT_COUNT回来る間にPATが来なければPATが無いとみなす
-					static const uint8_t PAT_GEN_PMT_COUNT = 5;
+					constexpr uint8_t PAT_GEN_PMT_COUNT = 5;
 					const int Index = PID - ONESEG_PMT_PID_FIRST;
 
 					if (m_PMTCount[Index] < PAT_GEN_PMT_COUNT) {
@@ -106,7 +106,7 @@ bool OneSegPATGenerator::GetPATPacket(TSPacket *pPacket)
 			PMTCount++;
 		} else {
 			if (i == 0)
-				return false;	// 先頭 PMT が無い
+				return false; // 先頭 PMT が無い
 			PMTList[i] = nullptr;
 		}
 	}
@@ -119,26 +119,26 @@ bool OneSegPATGenerator::GetPATPacket(TSPacket *pPacket)
 	uint8_t *pData = pPacket->GetData();
 
 	// TS header
-	pData[0] = 0x47;	// Sync
+	pData[0] = 0x47; // Sync
 	pData[1] = 0x60;
 	pData[2] = 0x00;
 	pData[3] = 0x10 | (m_ContinuityCounter & 0x0F);
 	pData[4] = 0x00;
 
 	// PAT
-	pData[5] = 0x00;	// table_id
+	pData[5] = 0x00; // table_id
 	pData[6] = 0xF0 | (SectionLength >> 8);
 	pData[7] = SectionLength & 0xFF;
 	pData[8] = m_TransportStreamID >> 8;
 	pData[9] = m_TransportStreamID & 0xFF;
-	pData[10] = 0xC1;	// reserved(2) + version_number(5) + current_next_indicator(1)
-	pData[11] = 0x00;	// section_number
-	pData[12] = 0x00;	// last_section_number
+	pData[10] = 0xC1; // reserved(2) + version_number(5) + current_next_indicator(1)
+	pData[11] = 0x00; // section_number
+	pData[12] = 0x00; // last_section_number
 
 	pData[13] = 0x00;
 	pData[14] = 0x00;
-	pData[15] = 0xE0;	// reserved(3) + NIT PID (high)
-	pData[16] = 0x10;	// NIT PID (low)
+	pData[15] = 0xE0; // reserved(3) + NIT PID (high)
+	pData[16] = 0x10; // NIT PID (low)
 
 	int Pos = 17;
 	for (int i = 0; i <= ONESEG_PMT_PID_LAST - ONESEG_PMT_PID_FIRST; i++) {
@@ -159,7 +159,7 @@ bool OneSegPATGenerator::GetPATPacket(TSPacket *pPacket)
 	std::memset(&pData[Pos], 0xFF, TS_PACKET_SIZE - Pos);
 
 #ifdef LIBISDB_DEBUG
-	TSPacket::ParseResult Result = pPacket->ParsePacket();
+	const TSPacket::ParseResult Result = pPacket->ParsePacket();
 	LIBISDB_ASSERT(Result == TSPacket::ParseResult::OK);
 #else
 	pPacket->ParsePacket();
@@ -212,4 +212,4 @@ void OneSegPATGenerator::OnNITSection(const PSITableBase *pTable, const PSISecti
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

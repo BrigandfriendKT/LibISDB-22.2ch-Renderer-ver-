@@ -243,4 +243,4 @@ bool VideoRenderer_VMR9::SetVisible(bool Visible)
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

@@ -33,7 +33,7 @@ namespace LibISDB
 {
 
 
-ObjectBase::ObjectBase()
+ObjectBase::ObjectBase() noexcept
 	: m_pLogger(nullptr)
 {
 }
@@ -45,20 +45,10 @@ void ObjectBase::SetLogger(Logger *pLogger)
 }
 
 
-void ObjectBase::Log(Logger::LogType Type, const CharType *pFormat, ...)
+void ObjectBase::LogV(Logger::LogType Type, StringView Format, FormatArgs Args)
 {
-	std::va_list Args;
-
-	va_start(Args, pFormat);
-	LogV(Type, pFormat, Args);
-	va_end(Args);
-}
-
-
-void ObjectBase::LogV(Logger::LogType Type, const CharType *pFormat, std::va_list Args)
-{
-	if ((m_pLogger != nullptr) && (pFormat != nullptr)) {
-		m_pLogger->LogV(Type, pFormat, Args);
+	if (m_pLogger != nullptr) {
+		m_pLogger->LogV(Type, Format, Args);
 	}
 }
 
@@ -71,4 +61,4 @@ void ObjectBase::LogRaw(Logger::LogType Type, const CharType *pText)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

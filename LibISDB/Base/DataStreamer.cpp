@@ -34,7 +34,7 @@ namespace LibISDB
 {
 
 
-DataStreamer::DataStreamer()
+DataStreamer::DataStreamer() noexcept
 	: m_InputStartPos(StreamBuffer::POS_BEGIN)
 	, m_OutputErrorNotified(false)
 {
@@ -416,4 +416,4 @@ bool DataStreamer::ProcessStream()
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

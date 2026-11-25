@@ -64,6 +64,9 @@ namespace LibISDB
 			OneSeg        = 0x0002U, /**< ワンセグ */
 			UseCharSize   = 0x0004U, /**< 文字サイズを反映 */
 			UnicodeSymbol = 0x0008U, /**< Unicodeの記号を利用(Unicode 5.2以降) */
+			UCS           = 0x0010U, /**< UCS符号化方式 */
+			Latin         = 0x0020U, /**< SBTVD規格のラテン文字符号化方式 */
+			LIBISDB_ENUM_FLAGS_TRAILER
 		};
 
 		/** 文字サイズ */
@@ -87,19 +90,7 @@ namespace LibISDB
 			uint8_t BackColorIndex;   /**< 背景色 */
 			uint8_t RasterColorIndex; /**< ラスタ色 */
 
-			bool operator == (const FormatInfo &rhs) const noexcept
-			{
-				return (Pos == rhs.Pos)
-					&& (Size == rhs.Size)
-					&& (CharColorIndex == rhs.CharColorIndex)
-					&& (BackColorIndex == rhs.BackColorIndex)
-					&& (RasterColorIndex == rhs.RasterColorIndex);
-			}
-
-			bool operator != (const FormatInfo &rhs) const noexcept
-			{
-				return !(*this == rhs);
-			}
+			bool operator == (const FormatInfo &rhs) const noexcept = default;
 		};
 
 		typedef std::vector<FormatInfo> FormatList;
@@ -146,6 +137,8 @@ namespace LibISDB
 			ProportionalHiragana,     /**< Proportional Hiragana */
 			ProportionalKatakana,     /**< Proportional Katakana */
 			JIS_X0201_Katakana,       /**< JIS X 0201 Katakana */
+			LatinExtension,           /**< Latin Extension */
+			LatinSpecial,             /**< Latin Special */
 			JIS_KanjiPlane1,          /**< JIS compatible Kanji Plane 1 */
 			JIS_KanjiPlane2,          /**< JIS compatible Kanji Plane 2 */
 			AdditionalSymbols,        /**< Additional symbols */
@@ -187,6 +180,8 @@ namespace LibISDB
 		DRCSMap *m_pDRCSMap;
 
 		bool m_IsCaption;
+		bool m_IsLatin;
+		bool m_IsUCS;
 		bool m_UseCharSize;
 		bool m_UnicodeSymbol;
 
@@ -204,6 +199,8 @@ namespace LibISDB
 		void PutHiraganaChar(uint16_t Code, InternalString *pDstString);
 		void PutKatakanaChar(uint16_t Code, InternalString *pDstString);
 		void PutJISKatakanaChar(uint16_t Code, InternalString *pDstString);
+		void PutLatinExtensionChar(uint16_t Code, InternalString *pDstString);
+		void PutLatinSpecialChar(uint16_t Code, InternalString *pDstString);
 		void PutSymbolsChar(uint16_t Code, InternalString *pDstString);
 		void PutMacroChar(uint16_t Code, InternalString *pDstString);
 		void PutDRCSChar(uint16_t Code, InternalString *pDstString);
@@ -217,17 +214,17 @@ namespace LibISDB
 
 		bool IsSmallCharMode() const noexcept
 		{
-			return (m_CharSize == CharSize::Small)
+			return m_IsLatin
+				|| (m_CharSize == CharSize::Small)
 				|| (m_CharSize == CharSize::Medium)
 				|| (m_CharSize == CharSize::Micro);
 		}
 
 		static bool IsDoubleByteCodeSet(CodeSet Set);
+		static size_t UTF8ToCodePoint(const uint8_t *pData, size_t Length, uint32_t *pCodePoint);
 	};
 
-	LIBISDB_ENUM_FLAGS(ARIBStringDecoder::DecodeFlag)
-
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_ARIB_STRING_H
+#endif // ifndef LIBISDB_ARIB_STRING_H

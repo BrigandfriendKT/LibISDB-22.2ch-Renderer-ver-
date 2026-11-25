@@ -160,4 +160,4 @@ bool ImageMixer_EVR::GetMapSize(ReturnArg<int> Width, ReturnArg<int> Height)
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

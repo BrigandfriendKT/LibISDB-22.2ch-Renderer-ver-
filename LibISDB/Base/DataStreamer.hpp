@@ -61,7 +61,7 @@ namespace LibISDB
 			void Reset() noexcept { *this = Statistics(); }
 		};
 
-		DataStreamer();
+		DataStreamer() noexcept;
 		~DataStreamer();
 
 	// ObjectBase
@@ -124,7 +124,7 @@ namespace LibISDB
 		EventListenerList<EventListener> m_EventListenerList;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_DATA_STREAMER_H
+#endif // ifndef LIBISDB_DATA_STREAMER_H

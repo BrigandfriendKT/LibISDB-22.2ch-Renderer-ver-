@@ -58,6 +58,9 @@ namespace LibISDB::DirectShow
 
 		bool IsSPDIFSupported() const override { return false; }
 
+	// MPEGAudioDecoder
+		static void GetVersion(std::string *pVersion);
+
 	private:
 		bool OpenDecoder();
 		void CloseDecoder();
@@ -76,7 +79,7 @@ namespace LibISDB::DirectShow
 		int16_t m_PCMBuffer[PCM_BUFFER_LENGTH];
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_MPEG_AUDIO_DECODER_H
+#endif // ifndef LIBISDB_MPEG_AUDIO_DECODER_H

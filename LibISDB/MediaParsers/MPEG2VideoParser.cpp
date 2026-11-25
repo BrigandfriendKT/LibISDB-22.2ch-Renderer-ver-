@@ -34,7 +34,7 @@ namespace LibISDB
 {
 
 
-MPEG2Sequence::MPEG2Sequence()
+MPEG2Sequence::MPEG2Sequence() noexcept
 	: m_Header()
 {
 }
@@ -78,13 +78,13 @@ bool MPEG2Sequence::ParseHeader()
 	if ((m_Header.HorizontalSize == 0) || (m_Header.VerticalSize == 0))
 		return false;
 	if ((m_Header.AspectRatioInfo == 0) || (m_Header.AspectRatioInfo > 4))
-		return false;	// アスペクト比が異常
+		return false; // アスペクト比が異常
 	if ((m_Header.FrameRateCode == 0) || (m_Header.FrameRateCode > 8))
-		return false;	// フレームレートが異常
+		return false; // フレームレートが異常
 	if (!m_Header.MarkerBit)
-		return false;	// マーカービットが異常
+		return false; // マーカービットが異常
 	if (m_Header.ConstrainedParametersFlag)
-		return false;	// Constrained Parameters Flag が異常
+		return false; // Constrained Parameters Flag が異常
 
 	// 拡張ヘッダを検索する
 	uint32_t SyncState = 0xFFFFFFFF_u32;
@@ -100,13 +100,13 @@ bool MPEG2Sequence::ParseHeader()
 				m_Header.Extension.Sequence.ProfileAndLevel = (m_pData[i + 0] & 0x0F) << 4 | (m_pData[i + 1] >> 4);
 				m_Header.Extension.Sequence.Progressive     = (m_pData[i + 1] & 0x08) != 0;
 				m_Header.Extension.Sequence.ChromaFormat    = (m_pData[i + 1] & 0x06) >> 1;
-				m_Header.HorizontalSize |= (((m_pData[i + 1] & 0x01) << 1) | ((m_pData[i + 2] & 0x80) >> 7)) << 12;	// horizontal size extension
-				m_Header.VerticalSize   |= ((m_pData[i + 2] & 0x60) >> 5) << 12;	// vertical size extension
+				m_Header.HorizontalSize |= (((m_pData[i + 1] & 0x01) << 1) | ((m_pData[i + 2] & 0x80) >> 7)) << 12; // horizontal size extension
+				m_Header.VerticalSize   |= ((m_pData[i + 2] & 0x60) >> 5) << 12; // vertical size extension
 				m_Header.BitRate        |= (static_cast<uint32_t>(m_pData[i + 2] & 0x1F) << 7) |
-				                           (static_cast<uint32_t>(m_pData[i + 3] >> 1) << 18);	// bit rate extension
-				if ((m_pData[i + 3] & 0x01) == 0)	// marker bit
+				                           (static_cast<uint32_t>(m_pData[i + 3] >> 1) << 18); // bit rate extension
+				if ((m_pData[i + 3] & 0x01) == 0) // marker bit
 					break;
-				m_Header.VBVBufferSize  |= static_cast<uint32_t>(m_pData[i + 4]) << 10;	// vbv buffer size extension
+				m_Header.VBVBufferSize  |= static_cast<uint32_t>(m_pData[i + 4]) << 10; // vbv buffer size extension
 				m_Header.Extension.Sequence.LowDelay      = (m_pData[i + 5] & 0x80) != 0;
 				m_Header.Extension.Sequence.FrameRateExtN = (m_pData[i + 5] & 0x60) >> 5;
 				m_Header.Extension.Sequence.FrameRateExtD = (m_pData[i + 5] & 0x18) >> 3;
@@ -128,9 +128,9 @@ bool MPEG2Sequence::ParseHeader()
 					m_Header.Extension.Display.Color.MatrixCoefficients      = m_pData[i + 3];
 					i += 3;
 				}
-				if ((m_pData[i + 2] & 0x02) == 0)	// marker bit
+				if ((m_pData[i + 2] & 0x02) == 0) // marker bit
 					break;
-				if ((m_pData[i + 4] & 0x07) != 0)	// marker bit
+				if ((m_pData[i + 4] & 0x07) != 0) // marker bit
 					break;
 				m_Header.Extension.Display.DisplayHorizontalSize =
 					static_cast<uint16_t>((m_pData[i + 1] << 6) | ((m_pData[i + 2] & 0xFC) >> 2));
@@ -147,7 +147,7 @@ bool MPEG2Sequence::ParseHeader()
 }
 
 
-void MPEG2Sequence::Reset()
+void MPEG2Sequence::Reset() noexcept
 {
 	ClearSize();
 
@@ -187,14 +187,14 @@ bool MPEG2Sequence::GetFrameRate(ReturnArg<uint32_t> Num, ReturnArg<uint32_t> De
 	static const struct {
 		uint16_t Num, Denom;
 	} FrameRateList[] = {
-		{24000, 1001},	// 23.976
-		{   24,    1},	// 24
-		{   25,    1},	// 25
-		{30000, 1001},	// 29.97
-		{   30,    1},	// 30
-		{   50,    1},	// 50
-		{60000, 1001},	// 59.94
-		{   60,    1},	// 60
+		{24000, 1001}, // 23.976
+		{   24,    1}, // 24
+		{   25,    1}, // 25
+		{30000, 1001}, // 29.97
+		{   30,    1}, // 30
+		{   50,    1}, // 50
+		{60000, 1001}, // 59.94
+		{   60,    1}, // 60
 	};
 
 	if ((m_Header.FrameRateCode == 0) || (m_Header.FrameRateCode > 8))
@@ -221,7 +221,7 @@ bool MPEG2VideoParser::StoreES(const uint8_t *pData, size_t Size)
 }
 
 
-void MPEG2VideoParser::Reset()
+void MPEG2VideoParser::Reset() noexcept
 {
 	MPEGVideoParserBase::Reset();
 
@@ -240,4 +240,4 @@ void MPEG2VideoParser::OnSequence(DataBuffer *pSequenceData)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

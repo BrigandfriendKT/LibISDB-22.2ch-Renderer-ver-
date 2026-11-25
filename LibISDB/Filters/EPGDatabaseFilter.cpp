@@ -157,4 +157,4 @@ void EPGDatabaseFilter::OnTOTSection(const PSITableBase *pTable, const PSISectio
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

@@ -39,7 +39,7 @@ namespace LibISDB
 		: public DataBuffer
 	{
 	public:
-		ADTSFrame();
+		ADTSFrame() noexcept;
 
 		bool ParseHeader();
 		void Reset();
@@ -112,10 +112,9 @@ namespace LibISDB
 		bool SyncFrame(uint8_t Data);
 
 		bool m_IsStoring;
-		uint16_t m_StoreCRC;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_ADTS_PARSER_H
+#endif // ifndef LIBISDB_ADTS_PARSER_H

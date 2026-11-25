@@ -120,12 +120,12 @@ void CaptionParser::OnPESPacket(const PESParser *pParser, const PESPacket *pPack
 	if (LIBISDB_TRACE_ERROR_IF((pData == nullptr) || (DataSize < 3)))
 		return;
 
-	if (LIBISDB_TRACE_ERROR_IF((pData[0] != 0x80) && (pData[0] != 0x81)))	// data_identifier
+	if (LIBISDB_TRACE_ERROR_IF((pData[0] != 0x80) && (pData[0] != 0x81))) // data_identifier
 		return;
-	if (LIBISDB_TRACE_ERROR_IF(pData[1] != 0xFF))	// private_stream_id
+	if (LIBISDB_TRACE_ERROR_IF(pData[1] != 0xFF)) // private_stream_id
 		return;
 
-	const uint8_t HeaderLength = pData[2] & 0x0F;	// PES_data_packet_header_length
+	const uint8_t HeaderLength = pData[2] & 0x0F; // PES_data_packet_header_length
 	if (LIBISDB_TRACE_ERROR_IF(3_z + HeaderLength + 5_z >= DataSize))
 		return;
 
@@ -135,8 +135,8 @@ void CaptionParser::OnPESPacket(const PESParser *pParser, const PESPacket *pPack
 
 	const uint8_t DataGroupID             = pData[Pos] >> 2;         // data_group_id
 	const uint8_t DataGroupVersion        = pData[Pos] & 0x03;       // data_group_version
-//	const uint8_t DataGroupLinkNumber     = pData[Pos + 1];          // data_group_link_number
-//	const uint8_t LastDataGroupLinkNumber = pData[Pos + 2];          // last_data_group_link_number
+	//const uint8_t DataGroupLinkNumber     = pData[Pos + 1];          // data_group_link_number
+	//const uint8_t LastDataGroupLinkNumber = pData[Pos + 2];          // last_data_group_link_number
 	const uint16_t DataGroupSize          = Load16(&pData[Pos + 3]); // data_group_size
 	if (LIBISDB_TRACE_ERROR_IF(Pos + 5 + DataGroupSize + 2 > DataSize))
 		return;
@@ -158,7 +158,7 @@ void CaptionParser::OnPESPacket(const PESParser *pParser, const PESPacket *pPack
 		ParseManagementData(&pData[Pos], DataGroupSize);
 	} else {
 		// 字幕データ
-		ParseCaptionData(&pData[Pos], DataGroupSize);
+		ParseCaptionData(&pData[Pos], DataGroupSize, (DataGroupID & 0x1F));
 	}
 }
 
@@ -205,7 +205,7 @@ bool CaptionParser::ParseManagementData(const uint8_t *pData, uint32_t DataSize)
 		LangInfo.TCS          = (pData[Pos + 4] & 0x0C) >> 2;
 		LangInfo.RollupMode   = pData[Pos + 4] & 0x03;
 
-		int Index = GetLanguageIndexByTag(LangInfo.LanguageTag);
+		const int Index = GetLanguageIndexByTag(LangInfo.LanguageTag);
 		if (Index < 0) {
 			m_LanguageList.push_back(LangInfo);
 			Changed  = true;
@@ -228,7 +228,7 @@ bool CaptionParser::ParseManagementData(const uint8_t *pData, uint32_t DataSize)
 		uint32_t ReadSize = 0;
 		do {
 			uint32_t Size = UnitLoopLength - ReadSize;
-			if (!ParseUnitData(&pData[Pos + ReadSize], &Size))
+			if (!ParseUnitData(&pData[Pos + ReadSize], &Size, 0))
 				return false;
 			ReadSize += Size;
 		} while (ReadSize < UnitLoopLength);
@@ -238,7 +238,7 @@ bool CaptionParser::ParseManagementData(const uint8_t *pData, uint32_t DataSize)
 }
 
 
-bool CaptionParser::ParseCaptionData(const uint8_t *pData, uint32_t DataSize)
+bool CaptionParser::ParseCaptionData(const uint8_t *pData, uint32_t DataSize, uint8_t DataGroupIndex)
 {
 	// caption_data()
 
@@ -267,7 +267,7 @@ bool CaptionParser::ParseCaptionData(const uint8_t *pData, uint32_t DataSize)
 		uint32_t ReadSize = 0;
 		do {
 			uint32_t Size = UnitLoopLength - ReadSize;
-			if (!ParseUnitData(&pData[Pos + ReadSize], &Size))
+			if (!ParseUnitData(&pData[Pos + ReadSize], &Size, DataGroupIndex))
 				return false;
 			ReadSize += Size;
 		} while (ReadSize < UnitLoopLength);
@@ -277,13 +277,13 @@ bool CaptionParser::ParseCaptionData(const uint8_t *pData, uint32_t DataSize)
 }
 
 
-bool CaptionParser::ParseUnitData(const uint8_t *pData, uint32_t *pDataSize)
+bool CaptionParser::ParseUnitData(const uint8_t *pData, uint32_t *pDataSize, uint8_t DataGroupIndex)
 {
 	// data_unit()
 
 	if (LIBISDB_TRACE_ERROR_IF((pData == nullptr) || (*pDataSize < 5)))
 		return false;
-	if (LIBISDB_TRACE_ERROR_IF(pData[0] != 0x1F))	// unit_separator
+	if (LIBISDB_TRACE_ERROR_IF(pData[0] != 0x1F)) // unit_separator
 		return false;
 
 	const uint32_t UnitSize = Load24(&pData[2]);
@@ -305,11 +305,23 @@ bool CaptionParser::ParseUnitData(const uint8_t *pData, uint32_t *pDataSize)
 	if ((UnitSize > 0) && (m_pHandler != nullptr)) {
 		ARIBStringDecoder::DecodeFlag Flags =
 			m_1Seg ? ARIBStringDecoder::DecodeFlag::OneSeg : ARIBStringDecoder::DecodeFlag::None;
+		const int LangIndex =
+			DataGroupIndex != 0 ? GetLanguageIndexByTag(DataGroupIndex - 1) : m_LanguageList.empty() ? -1 : 0;
 		ARIBStringDecoder::FormatList FormatList;
 		String Text;
 
-		if (m_StringDecoder.DecodeCaption(&pData[5], UnitSize, &Text, Flags, &FormatList, m_pDRCSMap)) {
-			OnCaption(Text.c_str(), &FormatList);
+		// 原則として字幕管理の情報が必要。ただし1Segは運用によりパラメータ固定で送出頻度も低いため特別扱い
+		if ((LangIndex >= 0) || m_1Seg) {
+			if (LangIndex >= 0) {
+				const LanguageInfo &Info = m_LanguageList[LangIndex];
+				if (Info.TCS == 1)
+					Flags |= ARIBStringDecoder::DecodeFlag::UCS;
+				if ((Info.LanguageCode == LANGUAGE_CODE_POR) || (Info.LanguageCode == LANGUAGE_CODE_SPA))
+					Flags |= ARIBStringDecoder::DecodeFlag::Latin;
+			}
+			if (m_StringDecoder.DecodeCaption(&pData[5], UnitSize, &Text, Flags, &FormatList, m_pDRCSMap)) {
+				OnCaption(Text.c_str(), &FormatList);
+			}
 		}
 	}
 
@@ -343,7 +355,7 @@ bool CaptionParser::ParseDRCSUnitData(const uint8_t *pData, uint32_t DataSize)
 			if (LIBISDB_TRACE_ERROR_IF(RemainSize < 1))
 				return false;
 
-		//	const uint8_t FontID = pData[0] >> 4;
+			//const uint8_t FontID = pData[0] >> 4;
 			const uint8_t Mode   = pData[0] & 0x0F;
 			pData++;
 			RemainSize--;
@@ -433,4 +445,4 @@ void CaptionParser::OnCaption(const CharType *pText, const ARIBStringDecoder::Fo
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

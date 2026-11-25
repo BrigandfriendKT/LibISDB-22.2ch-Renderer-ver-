@@ -55,7 +55,7 @@ namespace LibISDB
 		bool m_IsOverrun;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_BITSTREAM_READER_H
+#endif // ifndef LIBISDB_BITSTREAM_READER_H

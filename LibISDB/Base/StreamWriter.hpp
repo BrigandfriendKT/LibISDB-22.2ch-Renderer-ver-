@@ -46,12 +46,13 @@ namespace LibISDB
 		enum class OpenFlag {
 			None      = 0x0000U, /**< 指定なし */
 			Overwrite = 0x0001U, /**< 上書き */
+			LIBISDB_ENUM_FLAGS_TRAILER
 		};
 
 		virtual ~StreamWriter() = default;
 
-		virtual bool Open(const CStringView &FileName, OpenFlag Flags = OpenFlag::None) = 0;
-		virtual bool Reopen(const CStringView &FileName, OpenFlag Flags = OpenFlag::None) = 0;
+		virtual bool Open(const String &FileName, OpenFlag Flags = OpenFlag::None) = 0;
+		virtual bool Reopen(const String &FileName, OpenFlag Flags = OpenFlag::None) = 0;
 		virtual void Close() = 0;
 		virtual bool IsOpen() const = 0;
 		virtual size_t Write(const void *pBuffer, size_t Size) = 0;
@@ -60,8 +61,6 @@ namespace LibISDB
 		virtual bool IsWriteSizeAvailable() const = 0;
 		virtual bool SetPreallocationUnit(SizeType PreallocationUnit) { return false; }
 	};
-
-	LIBISDB_ENUM_FLAGS(StreamWriter::OpenFlag)
 
 	/** ファイルストリーム書き出しクラス */
 	class FileStreamWriter
@@ -72,8 +71,8 @@ namespace LibISDB
 		~FileStreamWriter();
 
 	// StreamWriter
-		bool Open(const CStringView &FileName, OpenFlag Flags = OpenFlag::None) override;
-		bool Reopen(const CStringView &FileName, OpenFlag Flags = OpenFlag::None) override;
+		bool Open(const String &FileName, OpenFlag Flags = OpenFlag::None) override;
+		bool Reopen(const String &FileName, OpenFlag Flags = OpenFlag::None) override;
 		void Close() override;
 		bool IsOpen() const override;
 		size_t Write(const void *pBuffer, size_t Size) override;
@@ -83,13 +82,13 @@ namespace LibISDB
 		bool SetPreallocationUnit(SizeType PreallocationUnit) override;
 
 	private:
-		FileStream * OpenFile(const CStringView &FileName, OpenFlag Flags);
+		FileStream * OpenFile(const String &FileName, OpenFlag Flags);
 
 		std::unique_ptr<FileStream> m_File;
 		SizeType m_WriteSize;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_STREAM_WRITER_H
+#endif // ifndef LIBISDB_STREAM_WRITER_H

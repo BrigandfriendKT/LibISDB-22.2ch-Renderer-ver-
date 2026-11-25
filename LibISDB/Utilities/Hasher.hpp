@@ -45,7 +45,7 @@ namespace LibISDB
 		typename T::ValueType m_Hash = T::InitialValue;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_HASHER_H
+#endif // ifndef LIBISDB_HASHER_H

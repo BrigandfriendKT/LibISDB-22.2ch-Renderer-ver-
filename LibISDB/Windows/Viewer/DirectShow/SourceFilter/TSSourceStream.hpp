@@ -97,7 +97,7 @@ namespace LibISDB::DirectShow
 		uint16_t m_MapAudioPID;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_TS_SOURCE_STREAM_H
+#endif // ifndef LIBISDB_TS_SOURCE_STREAM_H

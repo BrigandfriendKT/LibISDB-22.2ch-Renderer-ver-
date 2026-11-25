@@ -123,7 +123,7 @@ namespace LibISDB
 		bool m_Preallocate = true;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_DATA_STORAGE_H
+#endif // ifndef LIBISDB_DATA_STORAGE_H

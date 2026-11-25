@@ -57,7 +57,7 @@ namespace LibISDB
 		std::shared_ptr<StreamBuffer> m_OutputBuffer;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_STREAM_BUFFER_DATA_STREAMER_H
+#endif // ifndef LIBISDB_STREAM_BUFFER_DATA_STREAMER_H

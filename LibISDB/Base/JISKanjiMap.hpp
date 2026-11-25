@@ -48,7 +48,7 @@ namespace LibISDB
 	}
 #endif
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_JIS_KANJI_MAP_H
+#endif // ifndef LIBISDB_JIS_KANJI_MAP_H

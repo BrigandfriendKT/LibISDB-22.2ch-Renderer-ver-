@@ -81,7 +81,7 @@ namespace LibISDB::DirectShow
 		MFTIME m_LastSampleTime;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_EVR_SCHEDULER_H
+#endif // ifndef LIBISDB_EVR_SCHEDULER_H

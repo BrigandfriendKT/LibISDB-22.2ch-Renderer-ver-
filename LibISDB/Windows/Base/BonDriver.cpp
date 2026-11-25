@@ -56,7 +56,7 @@ BonDriver::~BonDriver()
 }
 
 
-bool BonDriver::Load(const CStringView &FileName)
+bool BonDriver::Load(const String &FileName)
 {
 	Unload();
 
@@ -355,4 +355,4 @@ void BonDriver::PurgeTsStream()
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

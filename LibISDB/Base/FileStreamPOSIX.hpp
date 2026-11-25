@@ -48,11 +48,11 @@ namespace LibISDB
 			void operator () (int fd) const {}
 		};
 
-		FileStreamPOSIX();
-		FileStreamPOSIX(const Closer &closer);
+		FileStreamPOSIX() noexcept;
+		FileStreamPOSIX(const Closer &closer) noexcept;
 		~FileStreamPOSIX();
 
-		bool Open(const CStringView &FileName, OpenFlag Flags) override;
+		bool Open(const String &FileName, OpenFlag Flags) override;
 		bool Close() override;
 		bool IsOpen() const override;
 
@@ -72,7 +72,7 @@ namespace LibISDB
 		Closer m_Closer;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_FILE_STREAM_POSIX_H
+#endif // ifndef LIBISDB_FILE_STREAM_POSIX_H

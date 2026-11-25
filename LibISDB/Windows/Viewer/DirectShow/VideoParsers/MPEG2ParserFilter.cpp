@@ -35,7 +35,7 @@ namespace LibISDB::DirectShow
 {
 
 
-constexpr long SAMPLE_BUFFER_SIZE = 0x800000L;	// 8MiB
+constexpr long SAMPLE_BUFFER_SIZE = 0x800000L; // 8MiB
 
 
 MPEG2ParserFilter::MPEG2ParserFilter(LPUNKNOWN pUnk, HRESULT *phr)
@@ -47,7 +47,7 @@ MPEG2ParserFilter::MPEG2ParserFilter(LPUNKNOWN pUnk, HRESULT *phr)
 	, m_MPEG2Parser(this)
 	, m_pOutSample(nullptr)
 {
-	LIBISDB_TRACE(LIBISDB_STR("MPEG2ParserFilter::MPEG2ParserFilter() %p\n"), this);
+	LIBISDB_TRACE(LIBISDB_STR("MPEG2ParserFilter::MPEG2ParserFilter() {}\n"), static_cast<void *>(this));
 
 	*phr = S_OK;
 }
@@ -177,16 +177,16 @@ HRESULT MPEG2ParserFilter::Transform(IMediaSample *pIn, IMediaSample *pOut)
 }
 
 
-#else	// ndef MPEG2PARSERFILTER_INPLACE
+#else // ndef MPEG2PARSERFILTER_INPLACE
 
 
 HRESULT MPEG2ParserFilter::Transform(IMediaSample *pSample)
 {
 	BYTE *pData = nullptr;
-	HRESULT hr = pSample->GetPointer(&pData);
+	const HRESULT hr = pSample->GetPointer(&pData);
 	if (FAILED(hr))
 		return hr;
-	LONG DataSize = pSample->GetActualDataLength();
+	const LONG DataSize = pSample->GetActualDataLength();
 	m_pOutSample = pSample;
 
 	CAutoLock Lock(&m_ParserLock);
@@ -228,7 +228,7 @@ HRESULT MPEG2ParserFilter::Receive(IMediaSample *pSample)
 }
 
 
-#endif	// MPEG2PARSERFILTER_INPLACE
+#endif // MPEG2PARSERFILTER_INPLACE
 
 
 HRESULT MPEG2ParserFilter::StartStreaming()
@@ -250,7 +250,7 @@ HRESULT MPEG2ParserFilter::StopStreaming()
 
 HRESULT MPEG2ParserFilter::BeginFlush()
 {
-	HRESULT hr =
+	const HRESULT hr =
 #ifndef MPEG2PARSERFILTER_INPLACE
 		CTransformFilter
 #else
@@ -324,7 +324,7 @@ void MPEG2ParserFilter::OnMPEG2Sequence(const MPEG2VideoParser *pParser, const M
 		m_VideoInfo = Info;
 
 		LIBISDB_TRACE(
-			LIBISDB_STR("MPEG2 sequence %d x %d [%d x %d (%d=%d:%d)]\n"),
+			LIBISDB_STR("MPEG2 sequence {} x {} [{} x {} ({}={}:{})]\n"),
 			OrigWidth, OrigHeight, DisplayWidth, DisplayHeight,
 			pSequence->GetAspectRatioInfo(), AspectX, AspectY);
 
@@ -334,4 +334,4 @@ void MPEG2ParserFilter::OnMPEG2Sequence(const MPEG2VideoParser *pParser, const M
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

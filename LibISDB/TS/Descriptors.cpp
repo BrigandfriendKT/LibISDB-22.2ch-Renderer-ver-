@@ -36,13 +36,13 @@ namespace LibISDB
 {
 
 
-CADescriptor::CADescriptor()
+CADescriptor::CADescriptor() noexcept
 {
 	Reset();
 }
 
 
-void CADescriptor::Reset()
+void CADescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -71,7 +71,7 @@ bool CADescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-void NetworkNameDescriptor::Reset()
+void NetworkNameDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -106,7 +106,7 @@ bool NetworkNameDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-void ServiceListDescriptor::Reset()
+void ServiceListDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -132,7 +132,7 @@ int ServiceListDescriptor::GetServiceIndexByID(uint16_t ServiceID) const
 
 uint8_t ServiceListDescriptor::GetServiceTypeByID(uint16_t ServiceID) const
 {
-	int Index = GetServiceIndexByID(ServiceID);
+	const int Index = GetServiceIndexByID(ServiceID);
 	if (Index >= 0)
 		return m_ServiceList[Index].ServiceType;
 	return SERVICE_TYPE_INVALID;
@@ -174,13 +174,13 @@ bool ServiceListDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-SatelliteDeliverySystemDescriptor::SatelliteDeliverySystemDescriptor()
+SatelliteDeliverySystemDescriptor::SatelliteDeliverySystemDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void SatelliteDeliverySystemDescriptor::Reset()
+void SatelliteDeliverySystemDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -202,7 +202,7 @@ bool SatelliteDeliverySystemDescriptor::StoreContents(const uint8_t *pPayload)
 		return false;
 
 	m_Frequency       = GetBCD(&pPayload[0], 8);
-	m_OrbitalPosition = (uint16_t)GetBCD(&pPayload[4], 4);
+	m_OrbitalPosition = static_cast<uint16_t>(GetBCD(&pPayload[4], 4));
 	m_WestEastFlag    = (pPayload[6] & 0x80) != 0;
 	m_Polarization    = (pPayload[6] >> 5) & 0x03;
 	m_Modulation      = pPayload[6] & 0x1F;
@@ -215,13 +215,13 @@ bool SatelliteDeliverySystemDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-CableDeliverySystemDescriptor::CableDeliverySystemDescriptor()
+CableDeliverySystemDescriptor::CableDeliverySystemDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void CableDeliverySystemDescriptor::Reset()
+void CableDeliverySystemDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -254,13 +254,13 @@ bool CableDeliverySystemDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-ServiceDescriptor::ServiceDescriptor()
+ServiceDescriptor::ServiceDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void ServiceDescriptor::Reset()
+void ServiceDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -328,13 +328,13 @@ bool ServiceDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-LinkageDescriptor::LinkageDescriptor()
+LinkageDescriptor::LinkageDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void LinkageDescriptor::Reset()
+void LinkageDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -365,13 +365,13 @@ bool LinkageDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-ShortEventDescriptor::ShortEventDescriptor()
+ShortEventDescriptor::ShortEventDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void ShortEventDescriptor::Reset()
+void ShortEventDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -439,13 +439,13 @@ bool ShortEventDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-ExtendedEventDescriptor::ExtendedEventDescriptor()
+ExtendedEventDescriptor::ExtendedEventDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void ExtendedEventDescriptor::Reset()
+void ExtendedEventDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -515,13 +515,13 @@ bool ExtendedEventDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-ComponentDescriptor::ComponentDescriptor()
+ComponentDescriptor::ComponentDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void ComponentDescriptor::Reset()
+void ComponentDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -567,13 +567,13 @@ bool ComponentDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-StreamIDDescriptor::StreamIDDescriptor()
+StreamIDDescriptor::StreamIDDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void StreamIDDescriptor::Reset()
+void StreamIDDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -596,13 +596,13 @@ bool StreamIDDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-ContentDescriptor::ContentDescriptor()
+ContentDescriptor::ContentDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void ContentDescriptor::Reset()
+void ContentDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -647,7 +647,7 @@ bool ContentDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-void LocalTimeOffsetDescriptor::Reset()
+void LocalTimeOffsetDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -702,13 +702,13 @@ bool LocalTimeOffsetDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-HierarchicalTransmissionDescriptor::HierarchicalTransmissionDescriptor()
+HierarchicalTransmissionDescriptor::HierarchicalTransmissionDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void HierarchicalTransmissionDescriptor::Reset()
+void HierarchicalTransmissionDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -733,13 +733,13 @@ bool HierarchicalTransmissionDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-DigitalCopyControlDescriptor::DigitalCopyControlDescriptor()
+DigitalCopyControlDescriptor::DigitalCopyControlDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void DigitalCopyControlDescriptor::Reset()
+void DigitalCopyControlDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -831,13 +831,13 @@ bool DigitalCopyControlDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-AudioComponentDescriptor::AudioComponentDescriptor()
+AudioComponentDescriptor::AudioComponentDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void AudioComponentDescriptor::Reset()
+void AudioComponentDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -904,13 +904,13 @@ bool AudioComponentDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-HyperLinkDescriptor::HyperLinkDescriptor()
+HyperLinkDescriptor::HyperLinkDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void HyperLinkDescriptor::Reset()
+void HyperLinkDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -1015,13 +1015,13 @@ bool HyperLinkDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-TargetRegionDescriptor::TargetRegionDescriptor()
+TargetRegionDescriptor::TargetRegionDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void TargetRegionDescriptor::Reset()
+void TargetRegionDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -1062,13 +1062,13 @@ bool TargetRegionDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-VideoDecodeControlDescriptor::VideoDecodeControlDescriptor()
+VideoDecodeControlDescriptor::VideoDecodeControlDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void VideoDecodeControlDescriptor::Reset()
+void VideoDecodeControlDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -1097,13 +1097,13 @@ bool VideoDecodeControlDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-DownloadContentDescriptor::DownloadContentDescriptor()
+DownloadContentDescriptor::DownloadContentDescriptor() noexcept
 	: m_Info()
 {
 }
 
 
-void DownloadContentDescriptor::Reset()
+void DownloadContentDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -1212,13 +1212,13 @@ bool DownloadContentDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-CAEMMTSDescriptor::CAEMMTSDescriptor()
+CAEMMTSDescriptor::CAEMMTSDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void CAEMMTSDescriptor::Reset()
+void CAEMMTSDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -1247,13 +1247,13 @@ bool CAEMMTSDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-CAContractInfoDescriptor::CAContractInfoDescriptor()
+CAContractInfoDescriptor::CAContractInfoDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void CAContractInfoDescriptor::Reset()
+void CAContractInfoDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -1341,13 +1341,13 @@ bool CAContractInfoDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-CAServiceDescriptor::CAServiceDescriptor()
+CAServiceDescriptor::CAServiceDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void CAServiceDescriptor::Reset()
+void CAServiceDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -1394,13 +1394,13 @@ bool CAServiceDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-TSInformationDescriptor::TSInformationDescriptor()
+TSInformationDescriptor::TSInformationDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void TSInformationDescriptor::Reset()
+void TSInformationDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -1480,13 +1480,13 @@ bool TSInformationDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-ExtendedBroadcasterDescriptor::ExtendedBroadcasterDescriptor()
+ExtendedBroadcasterDescriptor::ExtendedBroadcasterDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void ExtendedBroadcasterDescriptor::Reset()
+void ExtendedBroadcasterDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -1498,7 +1498,8 @@ bool ExtendedBroadcasterDescriptor::GetTerrestrialBroadcasterInfo(ReturnArg<Terr
 {
 	if (!Info)
 		return false;
-	if (m_BroadcasterType != BROADCASTER_TYPE_TERRESTRIAL)
+	if ((m_BroadcasterType != BROADCASTER_TYPE_TERRESTRIAL)
+			&& (m_BroadcasterType != BROADCASTER_TYPE_TERRESTRIAL_SOUND))
 		return false;
 
 	*Info = m_TerrestrialBroadcasterInfo;
@@ -1516,7 +1517,8 @@ bool ExtendedBroadcasterDescriptor::StoreContents(const uint8_t *pPayload)
 
 	m_BroadcasterType = pPayload[0] >> 4;
 
-	if (m_BroadcasterType == BROADCASTER_TYPE_TERRESTRIAL) {
+	if ((m_BroadcasterType == BROADCASTER_TYPE_TERRESTRIAL)
+			|| (m_BroadcasterType == BROADCASTER_TYPE_TERRESTRIAL_SOUND)) {
 		if (m_Length < 4)
 			return false;
 
@@ -1547,13 +1549,13 @@ bool ExtendedBroadcasterDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-LogoTransmissionDescriptor::LogoTransmissionDescriptor()
+LogoTransmissionDescriptor::LogoTransmissionDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void LogoTransmissionDescriptor::Reset()
+void LogoTransmissionDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -1601,7 +1603,7 @@ bool LogoTransmissionDescriptor::StoreContents(const uint8_t *pPayload)
 	} else if (m_LogoTransmissionType == TRANSMISSION_CHAR) {
 		// 簡易ロゴ方式
 		size_t i;
-		for (i = 0; (i < (size_t)m_Length - 1) && (i < MAX_LOGO_CHAR - 1); i++) {
+		for (i = 0; (i < static_cast<size_t>(m_Length) - 1) && (i < MAX_LOGO_CHAR - 1); i++) {
 			m_LogoChar[i] = pPayload[1 + i];
 		}
 		m_LogoChar[i] = '\0';
@@ -1613,13 +1615,13 @@ bool LogoTransmissionDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-SeriesDescriptor::SeriesDescriptor()
+SeriesDescriptor::SeriesDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void SeriesDescriptor::Reset()
+void SeriesDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -1666,8 +1668,8 @@ bool SeriesDescriptor::StoreContents(const uint8_t *pPayload)
 	m_ExpireDateValidFlag = (pPayload[2] & 0x01) != 0;
 	if (m_ExpireDateValidFlag)
 		MJDTimeToDateTime(Load16(&pPayload[3]), &m_ExpireDate);
-	m_EpisodeNumber       = (uint16_t)((pPayload[5] << 4) | (pPayload[6] >> 4));
-	m_LastEpisodeNumber   = (uint16_t)(((pPayload[6] & 0x0F) << 8) | pPayload[7]);
+	m_EpisodeNumber       = static_cast<uint16_t>((pPayload[5] << 4) | (pPayload[6] >> 4));
+	m_LastEpisodeNumber   = static_cast<uint16_t>(((pPayload[6] & 0x0F) << 8) | pPayload[7]);
 	if (m_Length > 8)
 		m_SeriesName.assign(&pPayload[8], m_Length - 8);
 	else
@@ -1679,13 +1681,13 @@ bool SeriesDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-EventGroupDescriptor::EventGroupDescriptor()
+EventGroupDescriptor::EventGroupDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void EventGroupDescriptor::Reset()
+void EventGroupDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -1753,13 +1755,13 @@ bool EventGroupDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-SIParameterDescriptor::SIParameterDescriptor()
+SIParameterDescriptor::SIParameterDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void SIParameterDescriptor::Reset()
+void SIParameterDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -1831,7 +1833,7 @@ bool SIParameterDescriptor::StoreContents(const uint8_t *pPayload)
 		case TABLE_ID_NBIT_MSG:
 		case TABLE_ID_NBIT_REF:
 			if (DescriptionLength == 1) {
-				Info.NIT.TableCycle = pPayload[Pos];
+				Info.NIT.TableCycle = GetBCD(&pPayload[Pos], 2);
 				OK = true;
 			}
 			break;
@@ -1840,7 +1842,7 @@ bool SIParameterDescriptor::StoreContents(const uint8_t *pPayload)
 		case TABLE_ID_LDT:
 		case TABLE_ID_CDT:
 			if (DescriptionLength == 2) {
-				Info.LDT.TableCycle = Load16(&pPayload[Pos]);
+				Info.LDT.TableCycle = GetBCD(&pPayload[Pos], 4);
 				OK = true;
 			}
 			break;
@@ -1848,9 +1850,10 @@ bool SIParameterDescriptor::StoreContents(const uint8_t *pPayload)
 		case TABLE_ID_EIT_PF_ACTUAL:
 			if (DescriptionLength == 4) {
 				// Terrestrial (H-EIT[p/f], M-EIT, L-EIT)
-				Info.HMLEIT.HEITTableCycle = pPayload[Pos + 0];
-				Info.HMLEIT.MEITTableCycle = pPayload[Pos + 1];
-				Info.HMLEIT.LEITTableCycle = pPayload[Pos + 2];
+				Info.HMLEIT.Valid = true;
+				Info.HMLEIT.HEITTableCycle = GetBCD(&pPayload[Pos + 0], 2);
+				Info.HMLEIT.MEITTableCycle = GetBCD(&pPayload[Pos + 1], 2);
+				Info.HMLEIT.LEITTableCycle = GetBCD(&pPayload[Pos + 2], 2);
 				Info.HMLEIT.NumOfMEITEvent = pPayload[Pos + 3] >> 4;
 				Info.HMLEIT.NumOfLEITEvent = pPayload[Pos + 3] & 0x0F;
 				OK = true;
@@ -1859,7 +1862,8 @@ bool SIParameterDescriptor::StoreContents(const uint8_t *pPayload)
 			[[fallthrough]];
 		case TABLE_ID_EIT_PF_OTHER:
 			if (DescriptionLength == 1) {
-				Info.EIT_PF.TableCycle = pPayload[Pos];
+				Info.EIT_PF.TableCycle = GetBCD(&pPayload[Pos], 2);
+				Info.HMLEIT.Valid = false;
 				OK = true;
 				break;
 			}
@@ -1868,30 +1872,30 @@ bool SIParameterDescriptor::StoreContents(const uint8_t *pPayload)
 		case TABLE_ID_EIT_SCHEDULE_ACTUAL:
 		case TABLE_ID_EIT_SCHEDULE_EXTENDED:
 		case TABLE_ID_EIT_SCHEDULE_OTHER:
-			Info.HEIT_Schedule.MediaTypeCount = 0;
+			Info.EIT_Schedule.MediaTypeCount = 0;
 
 			if (DescriptionLength >= 4) {
 				const size_t EndPos = Pos + DescriptionLength;
 
 				for (int i = 0; Pos + 4 <= EndPos; i++) {
-					Info.HEIT_Schedule.MediaTypeList[i].MediaType       = pPayload[Pos + 0] >> 6;
-					Info.HEIT_Schedule.MediaTypeList[i].Pattern         = (pPayload[Pos + 0] >> 4) & 0x03;
-					Info.HEIT_Schedule.MediaTypeList[i].EITOtherFlag    = (pPayload[Pos + 0] & 0x08) != 0;
-					Info.HEIT_Schedule.MediaTypeList[i].ScheduleRange   = GetBCD(pPayload[Pos + 1]);
-					Info.HEIT_Schedule.MediaTypeList[i].BaseCycle       = GetBCD(&pPayload[Pos + 2], 3);
-					Info.HEIT_Schedule.MediaTypeList[i].CycleGroupCount = pPayload[Pos + 3] & 0x03;
+					Info.EIT_Schedule.MediaTypeList[i].MediaType       = pPayload[Pos + 0] >> 6;
+					Info.EIT_Schedule.MediaTypeList[i].Pattern         = (pPayload[Pos + 0] >> 4) & 0x03;
+					Info.EIT_Schedule.MediaTypeList[i].EITOtherFlag    = (pPayload[Pos + 0] & 0x08) != 0;
+					Info.EIT_Schedule.MediaTypeList[i].ScheduleRange   = GetBCD(pPayload[Pos + 1]);
+					Info.EIT_Schedule.MediaTypeList[i].BaseCycle       = GetBCD(&pPayload[Pos + 2], 3);
+					Info.EIT_Schedule.MediaTypeList[i].CycleGroupCount = pPayload[Pos + 3] & 0x03;
 
 					Pos += 4;
-					if (Pos + Info.HEIT_Schedule.MediaTypeList[i].CycleGroupCount * 2 > EndPos)
+					if (Pos + Info.EIT_Schedule.MediaTypeList[i].CycleGroupCount * 2 > EndPos)
 						break;
 
-					for (int j = 0; j < Info.HEIT_Schedule.MediaTypeList[i].CycleGroupCount; j++) {
-						Info.HEIT_Schedule.MediaTypeList[i].CycleGroup[j].NumOfSegment = GetBCD(pPayload[Pos + 0]);
-						Info.HEIT_Schedule.MediaTypeList[i].CycleGroup[j].Cycle        = GetBCD(pPayload[Pos + 1]);
+					for (int j = 0; j < Info.EIT_Schedule.MediaTypeList[i].CycleGroupCount; j++) {
+						Info.EIT_Schedule.MediaTypeList[i].CycleGroup[j].NumOfSegment = GetBCD(pPayload[Pos + 0]);
+						Info.EIT_Schedule.MediaTypeList[i].CycleGroup[j].Cycle        = GetBCD(pPayload[Pos + 1]);
 						Pos += 2;
 					}
 
-					Info.HEIT_Schedule.MediaTypeCount++;
+					Info.EIT_Schedule.MediaTypeCount++;
 				}
 
 				OK = true;
@@ -1911,7 +1915,7 @@ bool SIParameterDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-void BroadcasterNameDescriptor::Reset()
+void BroadcasterNameDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -1946,13 +1950,13 @@ bool BroadcasterNameDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-ComponentGroupDescriptor::ComponentGroupDescriptor()
+ComponentGroupDescriptor::ComponentGroupDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void ComponentGroupDescriptor::Reset()
+void ComponentGroupDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -2042,13 +2046,13 @@ bool ComponentGroupDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-LDTLinkageDescriptor::LDTLinkageDescriptor()
+LDTLinkageDescriptor::LDTLinkageDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void LDTLinkageDescriptor::Reset()
+void LDTLinkageDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -2104,13 +2108,13 @@ bool LDTLinkageDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-AccessControlDescriptor::AccessControlDescriptor()
+AccessControlDescriptor::AccessControlDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void AccessControlDescriptor::Reset()
+void AccessControlDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -2139,13 +2143,13 @@ bool AccessControlDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-TerrestrialDeliverySystemDescriptor::TerrestrialDeliverySystemDescriptor()
+TerrestrialDeliverySystemDescriptor::TerrestrialDeliverySystemDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void TerrestrialDeliverySystemDescriptor::Reset()
+void TerrestrialDeliverySystemDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -2177,7 +2181,7 @@ bool TerrestrialDeliverySystemDescriptor::StoreContents(const uint8_t *pPayload)
 	if (m_Length < 4)
 		return false;
 
-	m_AreaCode         = (uint16_t)((pPayload[0] << 4) | (pPayload[1] >> 4));
+	m_AreaCode         = static_cast<uint16_t>((pPayload[0] << 4) | (pPayload[1] >> 4));
 	m_GuardInterval    = (pPayload[1] & 0x0C) >> 2;
 	m_TransmissionMode = pPayload[1] & 0x03;
 	const int FrequencyCount = (m_Length - 2) / 2;
@@ -2194,13 +2198,13 @@ bool TerrestrialDeliverySystemDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-PartialReceptionDescriptor::PartialReceptionDescriptor()
+PartialReceptionDescriptor::PartialReceptionDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void PartialReceptionDescriptor::Reset()
+void PartialReceptionDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -2216,7 +2220,7 @@ int PartialReceptionDescriptor::GetServiceCount() const
 
 uint16_t PartialReceptionDescriptor::GetServiceID(int Index) const
 {
-	if ((unsigned int)Index >= m_ServiceCount)
+	if (static_cast<unsigned int>(Index) >= m_ServiceCount)
 		return SERVICE_ID_INVALID;
 	return m_ServiceList[Index];
 }
@@ -2242,7 +2246,7 @@ bool PartialReceptionDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-void EmergencyInformationDescriptor::Reset()
+void EmergencyInformationDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -2305,13 +2309,13 @@ bool EmergencyInformationDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-DataComponentDescriptor::DataComponentDescriptor()
+DataComponentDescriptor::DataComponentDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void DataComponentDescriptor::Reset()
+void DataComponentDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -2336,13 +2340,13 @@ bool DataComponentDescriptor::StoreContents(const uint8_t *pPayload)
 
 
 
-SystemManagementDescriptor::SystemManagementDescriptor()
+SystemManagementDescriptor::SystemManagementDescriptor() noexcept
 {
 	Reset();
 }
 
 
-void SystemManagementDescriptor::Reset()
+void SystemManagementDescriptor::Reset() noexcept
 {
 	DescriptorBase::Reset();
 
@@ -2367,4 +2371,4 @@ bool SystemManagementDescriptor::StoreContents(const uint8_t *pPayload)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

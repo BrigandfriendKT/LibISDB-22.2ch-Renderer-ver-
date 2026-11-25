@@ -45,9 +45,12 @@ namespace LibISDB::DirectShow
 		COMMemoryPointer<> GetCurrentImage() override;
 
 		static const CLSID & GetCLSID();
+
+	private:
+		HWND FindVideoWindow() override;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_VIDEO_RENDERER_MADVR_H
+#endif // ifndef LIBISDB_VIDEO_RENDERER_MADVR_H

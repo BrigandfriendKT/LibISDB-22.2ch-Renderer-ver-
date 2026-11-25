@@ -54,7 +54,7 @@ namespace LibISDB::DirectShow
 		COMPointer<IBaseFilter> m_Renderer;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_IMAGE_MIXER_H
+#endif // ifndef LIBISDB_IMAGE_MIXER_H

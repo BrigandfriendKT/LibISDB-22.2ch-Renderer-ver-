@@ -67,7 +67,7 @@ bool ConditionVariable::WaitFor(MutexLock &Lock, const std::chrono::milliseconds
 }
 
 
-#else	// LIBISDB_WINDOWS
+#else // LIBISDB_WINDOWS
 
 
 ConditionVariable::ConditionVariable()
@@ -99,7 +99,7 @@ bool ConditionVariable::WaitFor(MutexLock &Lock, const std::chrono::milliseconds
 }
 
 
-#endif	// !def LIBISDB_WINDOWS
+#endif // !def LIBISDB_WINDOWS
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

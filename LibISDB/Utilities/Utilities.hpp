@@ -77,7 +77,7 @@ namespace LibISDB
 		     | ((v >> 56));
 	}
 
-#endif	// ifndef LIBISDB_BYTE_SWAP_INTRINSICS
+#endif // ifndef LIBISDB_BYTE_SWAP_INTRINSICS
 
 #ifndef LIBISDB_ROTATE_INTRINSICS
 
@@ -91,7 +91,7 @@ namespace LibISDB
 		return (v >> shift) | (v << (32 - shift));
 	}
 
-#endif	// ifndef LIBISDB_ROTATE_INTRINSICS
+#endif // ifndef LIBISDB_ROTATE_INTRINSICS
 
 	LIBISDB_FORCE_INLINE uint16_t Load16(const void *p)
 	{
@@ -172,7 +172,7 @@ namespace LibISDB
 
 	uint32_t GetBCD(const uint8_t *pData, size_t NibbleLength);
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_UTILITIES_H
+#endif // ifndef LIBISDB_UTILITIES_H

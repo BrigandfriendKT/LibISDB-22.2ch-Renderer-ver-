@@ -53,7 +53,7 @@ namespace LibISDB::DirectShow
 		bool SetVisible(bool Visible) override;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_VIDEO_RENDERER_VMR7_H
+#endif // ifndef LIBISDB_VIDEO_RENDERER_VMR7_H

@@ -131,7 +131,7 @@ bool StreamSourceFilter::StopStreaming()
 }
 
 
-bool StreamSourceFilter::OpenSource(const CStringView &Name)
+bool StreamSourceFilter::OpenSource(const String &Name)
 {
 	if (m_Stream) {
 		SetError(std::errc::operation_in_progress);
@@ -296,7 +296,7 @@ void StreamSourceFilter::StreamingMain()
 		if (!m_RequestQueue.empty()) {
 			StreamingRequest &Req = m_RequestQueue.front();
 			Req.IsProcessing = true;
-			StreamingRequest Request = Req;
+			const StreamingRequest Request = Req;
 			Lock.Unlock();
 
 			switch (Request.Type) {
@@ -387,10 +387,10 @@ bool StreamSourceFilter::WaitAllRequests(const std::chrono::milliseconds &Timeou
 bool StreamSourceFilter::HasPendingRequest()
 {
 	m_RequestLock.Lock();
-	bool Pending = !m_RequestQueue.empty();
+	const bool Pending = !m_RequestQueue.empty();
 	m_RequestLock.Unlock();
 	return Pending;
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

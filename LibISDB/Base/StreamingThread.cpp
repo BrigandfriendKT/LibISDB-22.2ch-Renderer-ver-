@@ -33,7 +33,7 @@ namespace LibISDB
 {
 
 
-StreamingThread::StreamingThread()
+StreamingThread::StreamingThread() noexcept
 	: m_StreamingThreadEndSignal(false)
 	, m_StreamingThreadTimeout(10 * 1000)
 	, m_StreamingThreadIdleWait(10)
@@ -69,8 +69,8 @@ void StreamingThread::StopStreamingThread()
 
 		if (!((m_StreamingThreadTimeout.count() > 0) ? Wait(m_StreamingThreadTimeout) : Wait())) {
 			// TODO: ログとして出力
-			//Log(Logger::LogType::Warning, LIBISDB_STR("Thread %") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("[%p] not responding, trying to termiante\n"), GetThreadName(), this);
-			LIBISDB_TRACE_WARNING(LIBISDB_STR("Thread %") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("[%p] not responding, trying to terminate\n"), GetThreadName(), this);
+			//Log(Logger::LogType::Warning, LIBISDB_STR("Thread {}[{}] not responding, trying to termiante\n"), GetThreadName(), static_cast<void *>(this));
+			LIBISDB_TRACE_WARNING(LIBISDB_STR("Thread {}[{}] not responding, trying to terminate\n"), GetThreadName(), static_cast<void *>(this));
 			Terminate();
 		} else {
 			Stop();
@@ -81,17 +81,17 @@ void StreamingThread::StopStreamingThread()
 
 void StreamingThread::ThreadMain()
 {
-	LIBISDB_TRACE(LIBISDB_STR("Start thread %") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("[%p]\n"), GetThreadName(), this);
+	LIBISDB_TRACE(LIBISDB_STR("Start thread {}[{}]\n"), GetThreadName(), static_cast<void *>(this));
 
 	try {
 		StreamingLoop();
 	} catch (...) {
 		// TODO: ログとして出力
-		//Log(Logger::LogType::Error, LIBISDB_STR("Exception in thread %") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("[%p]"), GetThreadName(), this);
-		LIBISDB_TRACE_ERROR(LIBISDB_STR("Exception in thread %") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("[%p]\n"), GetThreadName(), this);
+		//Log(Logger::LogType::Error, LIBISDB_STR("Exception in thread {}[{}]"), GetThreadName(), static_cast<void *>(this));
+		LIBISDB_TRACE_ERROR(LIBISDB_STR("Exception in thread {}[{}]\n"), GetThreadName(), static_cast<void *>(this));
 	}
 
-	LIBISDB_TRACE(LIBISDB_STR("End thread %") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("[%p]\n"), GetThreadName(), this);
+	LIBISDB_TRACE(LIBISDB_STR("End thread {}[{}]\n"), GetThreadName(), static_cast<void *>(this));
 }
 
 
@@ -117,4 +117,4 @@ void StreamingThread::StreamingLoop()
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

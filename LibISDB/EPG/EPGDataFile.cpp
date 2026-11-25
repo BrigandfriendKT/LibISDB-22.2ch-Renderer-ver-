@@ -140,7 +140,7 @@ struct FileHeader {
 } LIBISDB_ATTRIBUTE_PACKED;
 
 const char FileHeader_Type[8] = {'E', 'P', 'G', '-', 'D', 'A', 'T', 'A'};
-const uint32_t FileHeader_Version = 0;
+constexpr uint32_t FileHeader_Version = 0;
 
 struct EPGDateTime {
 	uint16_t Year;
@@ -267,7 +267,7 @@ struct EventGroupInfo {
 LIBISDB_PRAGMA_PACK_POP
 
 
-}	// namespace EPGData
+} // namespace EPGData
 
 
 constexpr uint16_t MAX_EPG_TEXT_LENGTH = 4096;
@@ -375,7 +375,7 @@ void WriteChunkString(Stream &File, uint8_t Tag, const String &Str)
 }
 
 
-}	// namespace
+} // namespace
 
 
 
@@ -389,7 +389,7 @@ EPGDataFile::EPGDataFile() noexcept
 }
 
 
-bool EPGDataFile::Open(EPGDatabase *pEPGDatabase, const CStringView &FileName, OpenFlag Flags)
+bool EPGDataFile::Open(EPGDatabase *pEPGDatabase, const String &FileName, OpenFlag Flags)
 {
 	Close();
 
@@ -488,7 +488,7 @@ bool EPGDataFile::Load()
 				}
 			}
 		} while (ChunkHeader.Tag != EPGData::Tag::End);
-	} catch (Exception Code) {
+	} catch (const Exception Code) {
 		ExceptionLog(Code);
 		return false;
 	} catch (std::bad_alloc) {
@@ -527,7 +527,7 @@ bool EPGDataFile::LoadHeader()
 		return false;
 
 	FileStream File;
-	FileStream::OpenFlag FileOpenFlags = FileStream::OpenFlag::Read | FileStream::OpenFlag::ShareRead;
+	const FileStream::OpenFlag FileOpenFlags = FileStream::OpenFlag::Read | FileStream::OpenFlag::ShareRead;
 
 	if (!File.Open(m_FileName, FileOpenFlags))
 		return false;
@@ -605,7 +605,7 @@ bool EPGDataFile::Save()
 			ValidServiceCount++;
 	}
 
-	auto ErrorCleanup = [&]() {
+	const auto ErrorCleanup = [&]() {
 		File.Close();
 
 #ifdef LIBISDB_WINDOWS
@@ -634,7 +634,7 @@ bool EPGDataFile::Save()
 
 		if (!!(m_OpenFlags & OpenFlag::Flush))
 			File.Flush();
-	} catch (Exception Code) {
+	} catch (const Exception Code) {
 		ExceptionLog(Code);
 		ErrorCleanup();
 		return false;
@@ -1083,4 +1083,4 @@ void EPGDataFile::ExceptionLog(Exception Code)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

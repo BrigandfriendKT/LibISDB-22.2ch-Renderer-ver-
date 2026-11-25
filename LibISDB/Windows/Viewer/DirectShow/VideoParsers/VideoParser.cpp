@@ -27,7 +27,7 @@
 #include "../../../../LibISDBPrivate.hpp"
 #include "../../../../LibISDBWindows.hpp"
 #include "VideoParser.hpp"
-#include <numeric>	// for std::gcd()
+#include <numeric> // for std::gcd()
 #include "../../../../Base/DebugDef.hpp"
 
 
@@ -110,8 +110,8 @@ bool VideoParser::SARToDAR(
 	int SARX, int SARY, int Width, int Height,
 	int *pDARX, int *pDARY)
 {
-	int DispWidth = Width * SARX, DispHeight = Height * SARY;
-	int Denom = std::gcd(DispWidth, DispHeight);
+	const int DispWidth = Width * SARX, DispHeight = Height * SARY;
+	const int Denom = std::gcd(DispWidth, DispHeight);
 
 	if (Denom != 0) {
 		int DARX = DispWidth / Denom, DARY = DispHeight / Denom;
@@ -124,4 +124,4 @@ bool VideoParser::SARToDAR(
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

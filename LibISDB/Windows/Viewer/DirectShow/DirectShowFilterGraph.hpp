@@ -60,7 +60,7 @@ namespace LibISDB::DirectShow
 #endif
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_DIRECT_SHOW_FILTER_GRAPH_H
+#endif // ifndef LIBISDB_DIRECT_SHOW_FILTER_GRAPH_H

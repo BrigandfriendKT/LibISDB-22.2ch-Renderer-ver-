@@ -122,7 +122,7 @@ namespace LibISDB::DirectShow
 		bool m_ChangeSize;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_H264_PARSER_FILTER_H
+#endif // ifndef LIBISDB_H264_PARSER_FILTER_H

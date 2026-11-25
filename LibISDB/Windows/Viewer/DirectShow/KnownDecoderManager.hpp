@@ -95,7 +95,7 @@ namespace LibISDB::DirectShow
 		static bool GetModulePath(LPTSTR pszPath);
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_KNOWN_DECODER_MANAGER_H
+#endif // ifndef LIBISDB_KNOWN_DECODER_MANAGER_H

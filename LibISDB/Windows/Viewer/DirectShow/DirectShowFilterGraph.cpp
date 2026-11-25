@@ -86,7 +86,7 @@ bool FilterGraph::Pause()
 		} else {
 			for (int i = 0; i < 20; i++) {
 				OAFilterState fs;
-				HRESULT hr = m_MediaControl->GetState(100, &fs);
+				const HRESULT hr = m_MediaControl->GetState(100, &fs);
 
 				if ((hr == S_OK || hr == VFW_S_CANT_CUE) && (fs == State_Paused)) {
 					Result = true;
@@ -111,7 +111,7 @@ bool FilterGraph::SetVolume(float Volume)
 		if (SUCCEEDED(m_GraphBuilder.QueryInterface(&pBasicAudio))) {
 			const long lVolume = std::clamp(static_cast<long>(Volume * 100.0f), -10000L, 0L);
 
-			LIBISDB_TRACE(LIBISDB_STR("Volume = %ld\n"), lVolume);
+			LIBISDB_TRACE(LIBISDB_STR("Volume = {}\n"), lVolume);
 			if (SUCCEEDED(pBasicAudio->put_Volume(lVolume)))
 				Result = true;
 			pBasicAudio->Release();
@@ -133,7 +133,7 @@ float FilterGraph::GetVolume() const
 			long lVolume;
 
 			if (SUCCEEDED(pBasicAudio->get_Volume(&lVolume)))
-				Volume = (float)lVolume / 100.0f;
+				Volume = static_cast<float>(lVolume) / 100.0f;
 			pBasicAudio->Release();
 		}
 	}
@@ -182,4 +182,4 @@ void FilterGraph::DestroyGraphBuilder()
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

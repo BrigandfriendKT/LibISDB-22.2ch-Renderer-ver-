@@ -47,7 +47,7 @@ namespace LibISDB::DirectShow
 		bool GetMapSize(ReturnArg<int> Width, ReturnArg<int> Height) override;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_IMAGE_MIXER_VMR7_H
+#endif // ifndef LIBISDB_IMAGE_MIXER_VMR7_H

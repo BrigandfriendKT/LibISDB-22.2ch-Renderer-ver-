@@ -73,6 +73,8 @@ void AnalyzerFilter::Reset()
 	m_PIDMapManager.MapTarget(PID_NIT, PSITableBase::CreateWithHandler<NITMultiTable>(&AnalyzerFilter::OnNITSection, this));
 	// SDTテーブルPIDマップ追加
 	m_PIDMapManager.MapTarget(PID_SDT, PSITableBase::CreateWithHandler<SDTTableSet>(&AnalyzerFilter::OnSDTSection, this));
+	// BITテーブルPIDマップ追加
+	m_PIDMapManager.MapTarget(PID_BIT, PSITableBase::CreateWithHandler<BITMultiTable>(&AnalyzerFilter::OnBITSection, this));
 #ifdef LIBISDB_ANALYZER_FILTER_EIT_SUPPORT
 	// H-EITテーブルPIDマップ追加
 	m_PIDMapManager.MapTarget(PID_HEIT, PSITableBase::CreateWithHandler<EITPfActualTable>(&AnalyzerFilter::OnEITSection, this));
@@ -526,7 +528,7 @@ bool AnalyzerFilter::GetAudioComponentText(int Index, int AudioIndex, ReturnArg<
 }
 
 
-#endif	// LIBISDB_ANALYZER_FILTER_EIT_SUPPORT
+#endif // LIBISDB_ANALYZER_FILTER_EIT_SUPPORT
 
 
 int AnalyzerFilter::GetCaptionESCount(int Index) const
@@ -1043,7 +1045,7 @@ const DescriptorBlock * AnalyzerFilter::GetExtendedEventDescriptor(int ServiceIn
 		for (i = 0; i < pEventGroup->GetEventCount(); i++) {
 			EventGroupDescriptor::EventInfo EventInfo;
 			if (pEventGroup->GetEventInfo(i, &EventInfo)) {
-				int Index = GetServiceIndexByID(EventInfo.ServiceID);
+				const int Index = GetServiceIndexByID(EventInfo.ServiceID);
 				if (Index >= 0) {
 					const EITTable *pEITTable = pEITPfTable->GetPfActualTable(EventInfo.ServiceID, Next);
 					if ((pEITTable == nullptr)
@@ -1555,7 +1557,7 @@ void AnalyzerFilter::AudioComponentDescToAudioInfo(const AudioComponentDescripto
 }
 
 
-#endif	// LIBISDB_ANALYZER_FILTER_EIT_SUPPORT
+#endif // LIBISDB_ANALYZER_FILTER_EIT_SUPPORT
 
 
 bool AnalyzerFilter::GetTOTTime(ReturnArg<DateTime> Time) const
@@ -1586,7 +1588,7 @@ bool AnalyzerFilter::GetInterpolatedTOTTime(ReturnArg<DateTime> Time, OptionalRe
 	if (m_TOTInterpolation.PCRPID != PID_INVALID) {
 		for (size_t i = 0; i < m_ServiceList.size(); i++) {
 			if (m_ServiceList[i].PCRPID == m_TOTInterpolation.PCRPID) {
-				uint64_t PCRTime = GetPCRTimeStamp(static_cast<int>(i));
+				const uint64_t PCRTime = GetPCRTimeStamp(static_cast<int>(i));
 
 				if (PCRTime != PCR_INVALID) {
 					long long Diff;
@@ -1595,7 +1597,7 @@ bool AnalyzerFilter::GetInterpolatedTOTTime(ReturnArg<DateTime> Time, OptionalRe
 						Diff = PCRTime - m_TOTInterpolation.PCRTime;
 					else
 						Diff = (0x200000000ULL - m_TOTInterpolation.PCRTime) + PCRTime;
-					if (Diff <= 15 * 90000LL) {	// 最大15秒
+					if (Diff <= 15 * 90000LL) { // 最大15秒
 						Time->OffsetMilliseconds(Diff / 90LL);
 						Interpolated = true;
 					}
@@ -1749,6 +1751,82 @@ bool AnalyzerFilter::GetCableDeliverySystemList(ReturnArg<CableDeliverySystemLis
 }
 
 
+bool AnalyzerFilter::GetBITNetworkList(ReturnArg<BITNetworkList> List) const
+{
+	if (!List)
+		return false;
+
+	BlockLock Lock(m_FilterLock);
+
+	List->clear();
+
+	const BITMultiTable *pBITMultiTable =
+		m_PIDMapManager.GetMapTarget<BITMultiTable>(PID_BIT);
+	if ((pBITMultiTable == nullptr) || !pBITMultiTable->IsBITComplete())
+		return false;
+
+	for (uint16_t SectionNo = 0; SectionNo < pBITMultiTable->GetBITSectionCount(); SectionNo++) {
+		const BITTable *pBITTable = pBITMultiTable->GetBITTable(SectionNo);
+		if (pBITTable == nullptr)
+			continue;
+
+		BITNetworkInfo &NetworkInfo = List->emplace_back();
+		NetworkInfo.OriginalNetworkID = pBITTable->GetOriginalNetworkID();
+
+		// BIT 第1ループ(ネットワークループ)
+		if (const DescriptorBlock *pDescBlock = pBITTable->GetBITDescriptorBlock();
+				pDescBlock != nullptr) {
+			pDescBlock->EnumDescriptors<SIParameterDescriptor>(
+				[&](const SIParameterDescriptor *pSIParameterDesc) {
+					SIParameterInfo &SIParameter = NetworkInfo.SIParameterList.emplace_back();
+					SIParameter.ParameterVersion = pSIParameterDesc->GetParameterVersion();
+					pSIParameterDesc->GetUpdateTime(&SIParameter.UpdateTime);
+					SIParameter.TableList.resize(pSIParameterDesc->GetTableCount());
+					for (int i = 0; i < pSIParameterDesc->GetTableCount(); i++)
+						pSIParameterDesc->GetTableInfo(i, &SIParameter.TableList[i]);
+				});
+		}
+
+		NetworkInfo.BroadcasterList.resize(pBITTable->GetBroadcasterCount());
+
+		// BIT 第2ループ(ブロードキャスタループ)
+		for (int i = 0; i < pBITTable->GetBroadcasterCount(); i++) {
+			BITBroadcasterInfo &BroadcasterInfo = NetworkInfo.BroadcasterList[i];
+			BroadcasterInfo.BroadcasterID = pBITTable->GetBroadcasterID(i);
+			BroadcasterInfo.BroadcasterType = 0xFF;
+
+			if (const DescriptorBlock *pDescBlock = pBITTable->GetBroadcasterDescriptorBlock(i);
+					pDescBlock != nullptr) {
+				if (const BroadcasterNameDescriptor *pBroadcasterNameDesc =
+							pDescBlock->GetDescriptor<BroadcasterNameDescriptor>();
+						pBroadcasterNameDesc != nullptr) {
+					ARIBString Name;
+					if (pBroadcasterNameDesc->GetBroadcasterName(&Name))
+						m_StringDecoder.Decode(Name, &BroadcasterInfo.BroadcasterName);
+				}
+
+				if (const ServiceListDescriptor *pServiceListDesc =
+							pDescBlock->GetDescriptor<ServiceListDescriptor>();
+						pServiceListDesc != nullptr) {
+					BroadcasterInfo.ServiceList.resize(pServiceListDesc->GetServiceCount());
+					for (int j = 0; j < pServiceListDesc->GetServiceCount(); j++)
+						pServiceListDesc->GetServiceInfo(j, &BroadcasterInfo.ServiceList[j]);
+				}
+
+				if (const ExtendedBroadcasterDescriptor *pExtendedBroadcasterDesc =
+							pDescBlock->GetDescriptor<ExtendedBroadcasterDescriptor>();
+						pExtendedBroadcasterDesc != nullptr) {
+					BroadcasterInfo.BroadcasterType = pExtendedBroadcasterDesc->GetBroadcasterType();
+					pExtendedBroadcasterDesc->GetTerrestrialBroadcasterInfo(&BroadcasterInfo.TerrestrialBroadcasterInfo);
+				}
+			}
+		}
+	}
+
+	return !List->empty();
+}
+
+
 bool AnalyzerFilter::GetEMMPIDList(ReturnArg<EMMPIDList> List) const
 {
 	if (!List)
@@ -1828,11 +1906,11 @@ void AnalyzerFilter::OnPATSection(const PSITableBase *pTable, const PSISection *
 	}
 
 #ifdef LIBISDB_ENABLE_TRACE
-	LIBISDB_TRACE(LIBISDB_STR("transport_stream_id : %04X\n"), m_TransportStreamID);
+	LIBISDB_TRACE(LIBISDB_STR("transport_stream_id : {:04X}\n"), m_TransportStreamID);
 	for (size_t i = 0; i < m_ServiceList.size(); i++) {
 		const ServiceInfo &Info = m_ServiceList[i];
 		LIBISDB_TRACE(
-			LIBISDB_STR("Service[%2zu] : service_id %04X / PMT PID  %04X\n"),
+			LIBISDB_STR("Service[{:2}] : service_id {:04X} / PMT PID {:04X}\n"),
 			i, Info.ServiceID, Info.PMTPID);
 	}
 #endif
@@ -1967,7 +2045,7 @@ void AnalyzerFilter::OnPMTSection(const PSITableBase *pTable, const PSISection *
 	}
 
 	// component_tag 順にソート
-	auto ComponentTagCmp =
+	const auto ComponentTagCmp =
 		[](const ESInfo &Info1, const ESInfo &Info2) -> bool {
 			return Info1.ComponentTag < Info2.ComponentTag;
 		};
@@ -1976,7 +2054,7 @@ void AnalyzerFilter::OnPMTSection(const PSITableBase *pTable, const PSISection *
 	InsertionSort(Info.CaptionESList, ComponentTagCmp);
 	InsertionSort(Info.DataCarrouselESList, ComponentTagCmp);
 
-	if (uint16_t PCRPID = pPMTTable->GetPCRPID(); PCRPID < 0x1FFF) {
+	if (const uint16_t PCRPID = pPMTTable->GetPCRPID(); PCRPID < 0x1FFF) {
 		Info.PCRPID = PCRPID;
 		if (m_PIDMapManager.GetMapTarget(PCRPID) == nullptr)
 			m_PIDMapManager.MapTarget(PCRPID, new PCRTable);
@@ -2010,10 +2088,10 @@ void AnalyzerFilter::OnPMTSection(const PSITableBase *pTable, const PSISection *
 	}
 
 #ifdef LIBISDB_ENABLE_TRACE
-	LIBISDB_TRACE(LIBISDB_STR("service_id : %04X\n"), Info.ServiceID);
+	LIBISDB_TRACE(LIBISDB_STR("service_id : {:04X}\n"), Info.ServiceID);
 	for (size_t i = 0; i < Info.ESList.size(); i++) {
 		const ESInfo &ES = Info.ESList[i];
-		LIBISDB_TRACE(LIBISDB_STR("ES[%2zu] : PID %04X / stream_type %02X\n"), i, ES.PID, ES.StreamType);
+		LIBISDB_TRACE(LIBISDB_STR("ES[{:2}] : PID {:04X} / stream_type {:02X}\n"), i, ES.PID, ES.StreamType);
 	}
 #endif
 
@@ -2105,8 +2183,8 @@ void AnalyzerFilter::OnSDTSection(const PSITableBase *pTable, const PSISection *
 		m_TransportStreamID = pSDTTable->GetTransportStreamID();
 		m_NetworkID = pSDTTable->GetOriginalNetworkID();
 
-		LIBISDB_TRACE(LIBISDB_STR("transport_stream_id : %04X\n"), m_TransportStreamID);
-		LIBISDB_TRACE(LIBISDB_STR("network_id          : %04X\n"), m_NetworkID);
+		LIBISDB_TRACE(LIBISDB_STR("transport_stream_id : {:04X}\n"), m_TransportStreamID);
+		LIBISDB_TRACE(LIBISDB_STR("network_id          : {:04X}\n"), m_NetworkID);
 
 		UpdateSDTServiceList(pSDTTable, &m_SDTServiceList);
 
@@ -2164,7 +2242,7 @@ void AnalyzerFilter::OnNITSection(const PSITableBase *pTable, const PSISection *
 
 	m_NetworkID = pNITTable->GetNetworkID();
 
-	LIBISDB_TRACE(LIBISDB_STR("network_id : %04X\n"), m_NetworkID);
+	LIBISDB_TRACE(LIBISDB_STR("network_id : {:04X}\n"), m_NetworkID);
 
 	// ネットワーク情報取得
 	{
@@ -2214,7 +2292,7 @@ void AnalyzerFilter::OnNITSection(const PSITableBase *pTable, const PSISection *
 						if (pServiceListDesc->GetServiceInfo(j, &Info)) {
 							StreamInfo.ServiceList.push_back(Info);
 
-							int Index = GetServiceIndexByID(Info.ServiceID);
+							const int Index = GetServiceIndexByID(Info.ServiceID);
 							if (Index >= 0) {
 								ServiceInfo &Service = m_ServiceList[Index];
 								if (Service.ServiceType == SERVICE_TYPE_INVALID)
@@ -2242,6 +2320,17 @@ void AnalyzerFilter::OnNITSection(const PSITableBase *pTable, const PSISection *
 
 	m_FilterLock.Unlock();
 	m_EventListenerList.CallEventListener(&EventListener::OnNITUpdated, this);
+	m_FilterLock.Lock();
+}
+
+
+void AnalyzerFilter::OnBITSection(const PSITableBase *pTable, const PSISection *pSection)
+{
+	// BIT が更新された
+	LIBISDB_TRACE(LIBISDB_STR("AnalyzerFilter::OnBITSection()\n"));
+
+	m_FilterLock.Unlock();
+	m_EventListenerList.CallEventListener(&EventListener::OnBITUpdated, this);
 	m_FilterLock.Lock();
 }
 
@@ -2318,7 +2407,7 @@ void AnalyzerFilter::OnTOTSection(const PSITableBase *pTable, const PSISection *
 		}
 
 		if (Index >= 0) {
-			uint64_t PCRTime = GetPCRTimeStamp(Index);
+			const uint64_t PCRTime = GetPCRTimeStamp(Index);
 			if (PCRTime != PCR_INVALID) {
 				PCRPID = m_ServiceList[Index].PCRPID;
 				m_TOTInterpolation.PCRTime = PCRTime;
@@ -2334,4 +2423,4 @@ void AnalyzerFilter::OnTOTSection(const PSITableBase *pTable, const PSISection *
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

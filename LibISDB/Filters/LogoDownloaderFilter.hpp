@@ -110,7 +110,7 @@ namespace LibISDB
 		std::map<uint32_t, uint16_t> m_VersionMap;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_LOGO_DOWNLOADER_FILTER_H
+#endif // ifndef LIBISDB_LOGO_DOWNLOADER_FILTER_H

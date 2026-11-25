@@ -28,8 +28,9 @@
 #ifdef LIBISDB_WINDOWS
 #include "../LibISDBWindows.hpp"
 #include <tchar.h>
-#endif	// LIBISDB_WINDOWS
+#endif // LIBISDB_WINDOWS
 #include "ErrorHandler.hpp"
+#include "../Utilities/StringFormat.hpp"
 #include "../Utilities/StringUtilities.hpp"
 #include "DebugDef.hpp"
 
@@ -120,7 +121,7 @@ CharType * ErrorString::DuplicateString(const CharType *pSrc) noexcept
 	if (pSrc == nullptr)
 		return nullptr;
 
-	size_t Size = (StringLength(pSrc) + 1) * sizeof(CharType);
+	const size_t Size = (StringLength(pSrc) + 1) * sizeof(CharType);
 	CharType *pNewString = static_cast<CharType *>(std::malloc(Size));
 	if (pNewString == nullptr)
 		return nullptr;
@@ -329,7 +330,7 @@ std::string ErrorCategory_HRESULT::message(int ev) const
 			FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr,
 			ev, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 			szText, (DWORD)std::size(szText), nullptr) <= 0) {
-		StringPrintf(szText, std::size(szText), "HRESULT %08x", ev);
+		StringFormat(szText, "HRESULT {:08x}", ev);
 	}
 
 	return std::string(szText);
@@ -343,7 +344,7 @@ const std::error_category & HRESULTErrorCategory() noexcept
 }
 
 
-#endif	// LIBISDB_WINDOWS
+#endif // LIBISDB_WINDOWS
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

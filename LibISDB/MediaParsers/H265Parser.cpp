@@ -35,7 +35,7 @@ namespace LibISDB
 {
 
 
-H265AccessUnit::H265AccessUnit()
+H265AccessUnit::H265AccessUnit() noexcept
 {
 	Reset();
 }
@@ -64,16 +64,16 @@ bool H265AccessUnit::ParseHeader()
 		if (!FoundStartCode)
 			break;
 
-		if (m_pData[Pos] & 0x80)	// forbidden_zero_bit	f(1)
+		if (m_pData[Pos] & 0x80) // forbidden_zero_bit f(1)
 			break;
-		const uint8_t NALUnitType = (m_pData[Pos] & 0x7E) >> 1;	// nal_unit_type	u(6)
-		// nuh_layer_id	u(6)
-		// nuh_temporal_id_plus1	u(3)
+		const uint8_t NALUnitType = (m_pData[Pos] & 0x7E) >> 1; // nal_unit_type u(6)
+		// nuh_layer_id u(6)
+		// nuh_temporal_id_plus1 u(3)
 		Pos += 2;
 		size_t NALUnitSize = NextPos - 3 - Pos;
 
 		NALUnitSize = EBSPToRBSP(&m_pData[Pos], NALUnitSize);
-		if (NALUnitSize == (size_t)-1)
+		if (NALUnitSize == static_cast<size_t>(-1))
 			break;
 
 		if (NALUnitType == 0x21) {
@@ -93,14 +93,14 @@ bool H265AccessUnit::ParseHeader()
 			m_Header.SPS.PTL.GeneralInterlacedSourceFlag = Bitstream.GetFlag();
 			m_Header.SPS.PTL.GeneralNonPackedConstraintFlag = Bitstream.GetFlag();
 			m_Header.SPS.PTL.GeneralFrameOnlyConstraintFlag = Bitstream.GetFlag();
-			Bitstream.Skip(44);	// general_reserved_zero_44bits
+			Bitstream.Skip(44); // general_reserved_zero_44bits
 			m_Header.SPS.PTL.GeneralLevelIDC = static_cast<uint8_t>(Bitstream.GetBits(8));
 			for (int i = 0; i < m_Header.SPS.SPSMaxSubLayersMinus1; i++) {
 				m_Header.SPS.PTL.SubLayer[i].SubLayerProfilePresentFlag = Bitstream.GetFlag();
 				m_Header.SPS.PTL.SubLayer[i].SubLayerLevelPresentFlag = Bitstream.GetFlag();
 			}
 			if (m_Header.SPS.SPSMaxSubLayersMinus1 > 0)
-				Bitstream.Skip((8 - m_Header.SPS.SPSMaxSubLayersMinus1) * 2);	// reserved_zero_2bits
+				Bitstream.Skip((8 - m_Header.SPS.SPSMaxSubLayersMinus1) * 2); // reserved_zero_2bits
 			for (int i = 0; i < m_Header.SPS.SPSMaxSubLayersMinus1; i++) {
 				if (m_Header.SPS.PTL.SubLayer[i].SubLayerProfilePresentFlag) {
 					m_Header.SPS.PTL.SubLayer[i].SubLayerProfileSpace = static_cast<uint8_t>(Bitstream.GetBits(2));
@@ -112,7 +112,7 @@ bool H265AccessUnit::ParseHeader()
 					m_Header.SPS.PTL.SubLayer[i].SubLayerInterlacedSourceFlag = Bitstream.GetFlag();
 					m_Header.SPS.PTL.SubLayer[i].SubLayerNonPackedConstraintFlag = Bitstream.GetFlag();
 					m_Header.SPS.PTL.SubLayer[i].SubLayerFrameOnlyConstraintFlag = Bitstream.GetFlag();
-					Bitstream.Skip(44);	// sub_layer_reserved_zero_44bits
+					Bitstream.Skip(44); // sub_layer_reserved_zero_44bits
 				}
 				if (m_Header.SPS.PTL.SubLayer[i].SubLayerLevelPresentFlag) {
 					m_Header.SPS.PTL.SubLayer[i].SubLayerLevelIDC = static_cast<uint8_t>(Bitstream.GetBits(8));
@@ -154,17 +154,18 @@ bool H265AccessUnit::ParseHeader()
 					// scaling_list_data
 					for (int SizeId = 0; SizeId < 4; SizeId++) {
 						for (int MatrixId = 0; MatrixId < ((SizeId == 3) ? 2 : 6); MatrixId++) {
-							bool bScalingListPredModeFlag = Bitstream.GetFlag();
+							const bool bScalingListPredModeFlag = Bitstream.GetFlag();
 							if (!bScalingListPredModeFlag) {
-								Bitstream.GetUE_V();	// scaling_list_pred_matrix_id_delta
+								Bitstream.GetUE_V(); // scaling_list_pred_matrix_id_delta
 							} else {
-								int NextCoef = 8, CoefNum = std::min(64, 1 << (4 + (SizeId << 1)));
+								int NextCoef = 8;
+								const int CoefNum = std::min(64, 1 << (4 + (SizeId << 1)));
 								if (SizeId > 1) {
-									int ScalingListDcCoefMinus8 = Bitstream.GetSE_V();
+									const int ScalingListDcCoefMinus8 = Bitstream.GetSE_V();
 									NextCoef = ScalingListDcCoefMinus8 + 8;
 								}
 								for (int i = 0; i < CoefNum; i++) {
-									int ScalingListDeltaCoef = Bitstream.GetSE_V();
+									const int ScalingListDeltaCoef = Bitstream.GetSE_V();
 									NextCoef = (NextCoef + ScalingListDeltaCoef + 256) % 256;
 								}
 							}
@@ -190,31 +191,31 @@ bool H265AccessUnit::ParseHeader()
 				if (i != 0)
 					InterRefPicSetPredictionFlag = Bitstream.GetFlag();
 				if (InterRefPicSetPredictionFlag) {
-					Bitstream.GetFlag();	// delta_rps_sign
-					Bitstream.GetUE_V();	// abs_delta_rps_minus1
+					Bitstream.GetFlag(); // delta_rps_sign
+					Bitstream.GetUE_V(); // abs_delta_rps_minus1
 					int NumPicsNew = 0;
 					for (int j = 0; j <= NumPics; j++) {
-						bool bUsedByCurrPicFlag = Bitstream.GetFlag();
+						const bool bUsedByCurrPicFlag = Bitstream.GetFlag();
 						if (bUsedByCurrPicFlag) {
 							NumPicsNew++;
 						} else {
-							bool bUseDeltaFlag = Bitstream.GetFlag();
+							const bool bUseDeltaFlag = Bitstream.GetFlag();
 							if (bUseDeltaFlag)
 								NumPicsNew++;
 						}
 					}
 					NumPics = NumPicsNew;
 				} else {
-					int NumNegativePics = Bitstream.GetUE_V();
-					int NumPositivePics = Bitstream.GetUE_V();
+					const int NumNegativePics = Bitstream.GetUE_V();
+					const int NumPositivePics = Bitstream.GetUE_V();
 					NumPics = NumNegativePics + NumPositivePics;
 					for (int j = 0; j < NumNegativePics; j++) {
-						Bitstream.GetUE_V();	// delta_poc_s0_minus1
-						Bitstream.GetFlag();	// used_by_curr_pic_s0_flag
+						Bitstream.GetUE_V(); // delta_poc_s0_minus1
+						Bitstream.GetFlag(); // used_by_curr_pic_s0_flag
 					}
 					for (int j = 0; j < NumPositivePics; j++) {
-						Bitstream.GetUE_V();	// delta_poc_s1_minus1
-						Bitstream.GetFlag();	// used_by_curr_pic_s1_flag
+						Bitstream.GetUE_V(); // delta_poc_s1_minus1
+						Bitstream.GetFlag(); // used_by_curr_pic_s1_flag
 					}
 				}
 			}
@@ -222,8 +223,8 @@ bool H265AccessUnit::ParseHeader()
 			if (m_Header.SPS.LongTermRefPicsPresentFlag) {
 				m_Header.SPS.NumLongTermRefPicsSPS = Bitstream.GetUE_V();
 				for (int i = 0; i < m_Header.SPS.NumLongTermRefPicsSPS; i++) {
-					Bitstream.Skip(m_Header.SPS.Log2MaxPicOrderCntLsbMinus4 + 4);	// lt_ref_pic_poc_lsb_sps
-					Bitstream.GetFlag();	// used_by_curr_pic_lt_sps_flag
+					Bitstream.Skip(m_Header.SPS.Log2MaxPicOrderCntLsbMinus4 + 4); // lt_ref_pic_poc_lsb_sps
+					Bitstream.GetFlag(); // used_by_curr_pic_lt_sps_flag
 				}
 			}
 			m_Header.SPS.SPSTemporalMvpEnabledFlag = Bitstream.GetFlag();
@@ -234,9 +235,9 @@ bool H265AccessUnit::ParseHeader()
 				m_Header.SPS.VUI.AspectRatioInfoPresentFlag = Bitstream.GetFlag();
 				if (m_Header.SPS.VUI.AspectRatioInfoPresentFlag) {
 					m_Header.SPS.VUI.AspectRatioIDC = static_cast<uint8_t>(Bitstream.GetBits(8));
-					if (m_Header.SPS.VUI.AspectRatioIDC == 0xFF) {	// EXTENDED_SAR
-						m_Header.SPS.VUI.SARWidth = (uint16_t)Bitstream.GetBits(16);
-						m_Header.SPS.VUI.SARHeight = (uint16_t)Bitstream.GetBits(16);
+					if (m_Header.SPS.VUI.AspectRatioIDC == 0xFF) { // EXTENDED_SAR
+						m_Header.SPS.VUI.SARWidth = static_cast<uint16_t>(Bitstream.GetBits(16));
+						m_Header.SPS.VUI.SARHeight = static_cast<uint16_t>(Bitstream.GetBits(16));
 					}
 				}
 				m_Header.SPS.VUI.OverscanInfoPresentFlag = Bitstream.GetFlag();
@@ -276,7 +277,7 @@ bool H265AccessUnit::ParseHeader()
 					if (m_Header.SPS.VUI.VUIPocProportionalToTimingFlag)
 						m_Header.SPS.VUI.VUINumTicksPocDiffOneMinus1 = Bitstream.GetUE_V();
 					m_Header.SPS.VUI.VUIHRDParametersPresentFlag = Bitstream.GetFlag();
-#if 0	// 割愛…
+#if 0 // 割愛…
 					if (m_Header.SPS.VUI.VUIHRDParametersPresentFlag) {
 						// hrd_parameters
 					}
@@ -313,7 +314,7 @@ bool H265AccessUnit::ParseHeader()
 }
 
 
-void H265AccessUnit::Reset()
+void H265AccessUnit::Reset() noexcept
 {
 	m_FoundSPS = false;
 	m_Header = Header();
@@ -324,7 +325,7 @@ uint16_t H265AccessUnit::GetHorizontalSize() const noexcept
 {
 	uint16_t Width = m_Header.SPS.PicWidthInLumaSamples;
 	if (m_Header.SPS.ConformanceWindowFlag) {
-		uint16_t Crop = (m_Header.SPS.ConfWinLeftOffset + m_Header.SPS.ConfWinRightOffset) * GetSubWidthC();
+		const uint16_t Crop = (m_Header.SPS.ConfWinLeftOffset + m_Header.SPS.ConfWinRightOffset) * GetSubWidthC();
 		if (Crop < Width)
 			Width -= Crop;
 	}
@@ -336,7 +337,7 @@ uint16_t H265AccessUnit::GetVerticalSize() const noexcept
 {
 	uint16_t Height = m_Header.SPS.PicHeightInLumaSamples;
 	if (m_Header.SPS.ConformanceWindowFlag) {
-		uint16_t Crop = (m_Header.SPS.ConfWinTopOffset + m_Header.SPS.ConfWinBottomOffset) * GetSubHeightC();
+		const uint16_t Crop = (m_Header.SPS.ConfWinTopOffset + m_Header.SPS.ConfWinBottomOffset) * GetSubHeightC();
 		if (Crop < Height)
 			Height -= Crop;
 	}
@@ -376,7 +377,7 @@ bool H265AccessUnit::GetSAR(ReturnArg<uint16_t> Horizontal, ReturnArg<uint16_t> 
 	if (m_Header.SPS.VUI.AspectRatioIDC < std::size(SARList)) {
 		Horz = SARList[m_Header.SPS.VUI.AspectRatioIDC].Horz;
 		Vert = SARList[m_Header.SPS.VUI.AspectRatioIDC].Vert;
-	} else if (m_Header.SPS.VUI.AspectRatioIDC == 255) {	// EXTENDED_SAR
+	} else if (m_Header.SPS.VUI.AspectRatioIDC == 255) { // EXTENDED_SAR
 		Horz = m_Header.SPS.VUI.SARWidth;
 		Vert = m_Header.SPS.VUI.SARHeight;
 	} else {
@@ -432,7 +433,7 @@ bool H265Parser::StoreES(const uint8_t *pData, size_t Size)
 }
 
 
-void H265Parser::Reset()
+void H265Parser::Reset() noexcept
 {
 	MPEGVideoParserBase::Reset();
 
@@ -451,4 +452,4 @@ void H265Parser::OnSequence(DataBuffer *pSequenceData)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

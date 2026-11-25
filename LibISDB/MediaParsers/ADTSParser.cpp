@@ -33,7 +33,7 @@ namespace LibISDB
 {
 
 
-ADTSFrame::ADTSFrame()
+ADTSFrame::ADTSFrame() noexcept
 	: m_Header()
 {
 }
@@ -44,7 +44,7 @@ bool ADTSFrame::ParseHeader()
 	if (m_DataSize < 7)
 		return false;
 	if ((m_pData[0] != 0xFF) || ((m_pData[1] & 0xF6) != 0xF0))
-		return false;	// syncword 及び layer 異常
+		return false; // syncword 及び layer 異常
 
 	// adts_fixed_header()
 	m_Header.MPEGVersion       = (m_pData[1] & 0x08) != 0;
@@ -64,15 +64,15 @@ bool ADTSFrame::ParseHeader()
 	m_Header.RawDataBlockNum   = m_pData[6] & 0x03;
 
 	if (m_Header.Profile == 3)
-		return false;	// 未定義のプロファイル
+		return false; // 未定義のプロファイル
 	if (m_Header.SamplingFreqIndex > 0x0B)
-		return false;	// 未定義のサンプリング周波数
+		return false; // 未定義のサンプリング周波数
 	if ((m_Header.ChannelConfig >= 3) && (m_Header.ChannelConfig != 6))
-		return false;	// チャンネル数異常
+		return false; // チャンネル数異常
 	if (m_Header.FrameLength < (m_Header.ProtectionAbsent ? 7 : 9))
-		return false;	// フレーム長異常
+		return false; // フレーム長異常
 	if (m_Header.RawDataBlockNum != 0)
-		return false;	// 複数の AAC フレームは非対応
+		return false; // 複数の AAC フレームは非対応
 
 	return true;
 }
@@ -179,7 +179,7 @@ bool ADTSParser::StoreES(const uint8_t *pData, size_t *pSize, ADTSFrame **ppFram
 			m_IsStoring = SyncFrame(pData[Pos++]);
 		} else {
 			// データをストアする
-			const size_t StoreRemain = (size_t)m_ADTSFrame.GetFrameLength() - m_ADTSFrame.GetSize();
+			const size_t StoreRemain = static_cast<size_t>(m_ADTSFrame.GetFrameLength()) - m_ADTSFrame.GetSize();
 			const size_t DataRemain = Size - Pos;
 
 			if (StoreRemain <= DataRemain) {
@@ -269,4 +269,4 @@ bool ADTSParser::SyncFrame(uint8_t Data)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

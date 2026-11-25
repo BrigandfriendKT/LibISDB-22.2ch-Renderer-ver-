@@ -50,9 +50,15 @@ constexpr int16_t FixedToInt16(mad_fixed_t Value)
 	return static_cast<int16_t>(Value >> (MAD_F_FRACBITS + 1 - 16));
 }
 
-}	// namespace
+} // namespace
 
 
+
+
+void MPEGAudioDecoder::GetVersion(std::string *pVersion)
+{
+	*pVersion = MAD_VERSION;
+}
 
 
 MPEGAudioDecoder::MPEGAudioDecoder() noexcept
@@ -193,7 +199,7 @@ bool MPEGAudioDecoder::DecodeFrame(const uint8_t *pData, size_t *pDataSize, Retu
 		if (MAD_RECOVERABLE(m_MadStream.error))
 			return true;
 		LIBISDB_TRACE(
-			LIBISDB_STR("libmad error : ") LIBISDB_STR(LIBISDB_PRIs) LIBISDB_STR("\n"),
+			"libmad error : {}\n",
 			mad_stream_errorstr(&m_MadStream));
 		ResetDecoder();
 		return false;
@@ -229,4 +235,4 @@ bool MPEGAudioDecoder::DecodeFrame(const uint8_t *pData, size_t *pDataSize, Retu
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

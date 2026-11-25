@@ -55,7 +55,8 @@ namespace LibISDB
 			None       = 0x0000U,
 			Upstream   = 0x0001U,
 			Downstream = 0x0002U,
-			Both       = 0x0003U,
+			LIBISDB_ENUM_FLAGS_TRAILER,
+			Both       = Upstream | Downstream,
 		};
 
 		FilterGraph() noexcept;
@@ -139,9 +140,7 @@ namespace LibISDB
 		const FilterInfo * GetFilterInfoByTypeID(const std::type_info &Type) const;
 	};
 
-	LIBISDB_ENUM_FLAGS(FilterGraph::ConnectDirection)
-
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_FILTER_GRAPH_H
+#endif // ifndef LIBISDB_FILTER_GRAPH_H

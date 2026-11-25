@@ -94,7 +94,7 @@ namespace LibISDB::DirectShow
 		std::atomic<bool> m_NewSegment;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_TS_SOURCE_PIN_H
+#endif // ifndef LIBISDB_TS_SOURCE_PIN_H

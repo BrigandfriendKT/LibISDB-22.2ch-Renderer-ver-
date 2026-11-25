@@ -34,7 +34,7 @@ namespace LibISDB
 {
 
 
-H264AccessUnit::H264AccessUnit()
+H264AccessUnit::H264AccessUnit() noexcept
 {
 	Reset();
 }
@@ -79,7 +79,7 @@ bool H264AccessUnit::ParseHeader()
 			m_Header.SPS.ConstraintSet1Flag = Bitstream.GetFlag();
 			m_Header.SPS.ConstraintSet2Flag = Bitstream.GetFlag();
 			m_Header.SPS.ConstraintSet3Flag = Bitstream.GetFlag();
-			if (Bitstream.GetBits(4) != 0)	// reserved_zero_4bits
+			if (Bitstream.GetBits(4) != 0) // reserved_zero_4bits
 				return false;
 			m_Header.SPS.LevelIDC = static_cast<uint8_t>(Bitstream.GetBits(8));
 			m_Header.SPS.SeqParameterSetID = Bitstream.GetUE_V();
@@ -98,7 +98,7 @@ bool H264AccessUnit::ParseHeader()
 					|| m_Header.SPS.ProfileIDC == 86) {
 				// High profile
 				m_Header.SPS.ChromaFormatIDC = Bitstream.GetUE_V();
-				if (m_Header.SPS.ChromaFormatIDC == 3)	// YUY444
+				if (m_Header.SPS.ChromaFormatIDC == 3) // YUY444
 					m_Header.SPS.SeparateColourPlaneFlag = Bitstream.GetFlag();
 				m_Header.SPS.BitDepthLumaMinus8 = Bitstream.GetUE_V();
 				m_Header.SPS.BitDepthChromaMinus8 = Bitstream.GetUE_V();
@@ -107,11 +107,11 @@ bool H264AccessUnit::ParseHeader()
 				if (m_Header.SPS.SeqScalingMatrixPresentFlag) {
 					const int Length = (m_Header.SPS.ChromaFormatIDC != 3) ? 8 : 12;
 					for (int i = 0; i < Length; i++) {
-						if (Bitstream.GetFlag()) {	// seq_scaling_list_present_flag
+						if (Bitstream.GetFlag()) { // seq_scaling_list_present_flag
 							int LastScale = 8, NextScale = 8;
 							for (int j = 0; j < (i < 6 ? 16 : 64); j++) {
 								if (NextScale != 0) {
-									int DeltaScale = Bitstream.GetSE_V();
+									const int DeltaScale = Bitstream.GetSE_V();
 									NextScale = (LastScale + DeltaScale + 256) % 256;
 									LastScale = NextScale;
 								}
@@ -130,7 +130,7 @@ bool H264AccessUnit::ParseHeader()
 				m_Header.SPS.OffsetForTopToBottomField = Bitstream.GetSE_V();
 				m_Header.SPS.NumRefFramesInPicOrderCntCycle = Bitstream.GetUE_V();
 				for (int i = 0; i < m_Header.SPS.NumRefFramesInPicOrderCntCycle; i++)
-					Bitstream.GetSE_V();	// offset_for_ref_frame
+					Bitstream.GetSE_V(); // offset_for_ref_frame
 			}
 			m_Header.SPS.NumRefFrames = Bitstream.GetUE_V();
 			m_Header.SPS.GapsInFrameNumValueAllowedFlag = Bitstream.GetFlag();
@@ -153,8 +153,8 @@ bool H264AccessUnit::ParseHeader()
 				if (m_Header.SPS.VUI.AspectRatioInfoPresentFlag) {
 					m_Header.SPS.VUI.AspectRatioIDC = static_cast<uint8_t>(Bitstream.GetBits(8));
 					if (m_Header.SPS.VUI.AspectRatioIDC == 255) {
-						m_Header.SPS.VUI.SARWidth = (uint16_t)Bitstream.GetBits(16);
-						m_Header.SPS.VUI.SARHeight = (uint16_t)Bitstream.GetBits(16);
+						m_Header.SPS.VUI.SARWidth = static_cast<uint16_t>(Bitstream.GetBits(16));
+						m_Header.SPS.VUI.SARHeight = static_cast<uint16_t>(Bitstream.GetBits(16));
 					}
 				}
 				m_Header.SPS.VUI.OverscanInfoPresentFlag = Bitstream.GetFlag();
@@ -245,7 +245,7 @@ bool H264AccessUnit::ParseHeader()
 }
 
 
-void H264AccessUnit::Reset()
+void H264AccessUnit::Reset() noexcept
 {
 	m_FoundSPS = false;
 	m_Header = Header();
@@ -316,7 +316,7 @@ bool H264AccessUnit::GetSAR(ReturnArg<uint16_t> Horizontal, ReturnArg<uint16_t> 
 	if (m_Header.SPS.VUI.AspectRatioIDC < std::size(SARList)) {
 		Horz = SARList[m_Header.SPS.VUI.AspectRatioIDC].Horz;
 		Vert = SARList[m_Header.SPS.VUI.AspectRatioIDC].Vert;
-	} else if (m_Header.SPS.VUI.AspectRatioIDC == 255) {	// Extended_SAR
+	} else if (m_Header.SPS.VUI.AspectRatioIDC == 255) { // Extended_SAR
 		Horz = m_Header.SPS.VUI.SARWidth;
 		Vert = m_Header.SPS.VUI.SARHeight;
 	} else {
@@ -373,7 +373,7 @@ bool H264Parser::StoreES(const uint8_t *pData, size_t Size)
 }
 
 
-void H264Parser::Reset()
+void H264Parser::Reset() noexcept
 {
 	MPEGVideoParserBase::Reset();
 
@@ -392,4 +392,4 @@ void H264Parser::OnSequence(DataBuffer *pSequenceData)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

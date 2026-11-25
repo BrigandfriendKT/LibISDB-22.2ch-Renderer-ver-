@@ -43,10 +43,10 @@ namespace LibISDB
 		: public FileStreamBase
 	{
 	public:
-		FileStreamWindows();
+		FileStreamWindows() noexcept;
 		~FileStreamWindows();
 
-		bool Open(const CStringView &FileName, OpenFlag Flags) override;
+		bool Open(const String &FileName, OpenFlag Flags) override;
 		bool Close() override;
 		bool IsOpen() const override;
 
@@ -75,10 +75,10 @@ namespace LibISDB
 		bool m_IsPreallocationFailed;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// LIBISDB_WINDOWS
+#endif // LIBISDB_WINDOWS
 
 
-#endif	// ifndef LIBISDB_FILE_STREAM_WINDOWS_H
+#endif // ifndef LIBISDB_FILE_STREAM_WINDOWS_H

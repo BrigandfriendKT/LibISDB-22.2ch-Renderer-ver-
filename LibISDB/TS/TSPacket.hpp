@@ -132,7 +132,7 @@ namespace LibISDB
 		AdaptationFieldHeader m_AdaptationField;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_TS_PACKET_H
+#endif // ifndef LIBISDB_TS_PACKET_H

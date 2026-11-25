@@ -106,7 +106,7 @@ namespace LibISDB::DirectShow
 		MutexLock m_RepaintSurfaceLock;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_EVR_PRESENT_ENGINE_H
+#endif // ifndef LIBISDB_EVR_PRESENT_ENGINE_H

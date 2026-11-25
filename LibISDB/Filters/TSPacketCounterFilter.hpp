@@ -107,7 +107,7 @@ namespace LibISDB
 		BitRateCalculator m_AudioBitRate;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_TS_PACKET_COUNTER_FILTER_H
+#endif // ifndef LIBISDB_TS_PACKET_COUNTER_FILTER_H

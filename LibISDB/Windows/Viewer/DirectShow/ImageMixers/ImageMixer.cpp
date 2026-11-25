@@ -78,4 +78,4 @@ bool ImageMixer::IsSupported(VideoRenderer::RendererType RendererType)
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

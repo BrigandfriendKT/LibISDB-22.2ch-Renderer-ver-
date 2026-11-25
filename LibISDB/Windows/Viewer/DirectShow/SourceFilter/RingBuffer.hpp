@@ -396,7 +396,7 @@ namespace LibISDB::DirectShow
 		size_t m_Pos;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_RING_BUFFER_H
+#endif // ifndef LIBISDB_RING_BUFFER_H

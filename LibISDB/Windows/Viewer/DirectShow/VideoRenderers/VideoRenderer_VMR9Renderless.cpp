@@ -210,7 +210,7 @@ STDMETHODIMP_(ULONG) VMR9Allocator::AddRef()
 
 STDMETHODIMP_(ULONG) VMR9Allocator::Release()
 {
-	LONG Result = ::InterlockedDecrement(&m_RefCount);
+	const LONG Result = ::InterlockedDecrement(&m_RefCount);
 	if (Result == 0)
 		delete this;
 	return Result;
@@ -284,10 +284,10 @@ STDMETHODIMP VMR9Allocator::InitializeDevice(
 		return E_FAIL;
 
 	LIBISDB_TRACE(
-		LIBISDB_STR("CVMRAllocator::InitializeDevice() : %lu x %lu (%lu buffers)\n"),
-		(unsigned long)lpAllocInfo->dwWidth,
-		(unsigned long)lpAllocInfo->dwHeight,
-		(unsigned long)*lpNumBuffers);
+		LIBISDB_STR("CVMRAllocator::InitializeDevice() : {} x {} ({} buffers)\n"),
+		lpAllocInfo->dwWidth,
+		lpAllocInfo->dwHeight,
+		*lpNumBuffers);
 
 	HRESULT hr;
 
@@ -297,7 +297,7 @@ STDMETHODIMP VMR9Allocator::InitializeDevice(
 	if (FAILED(hr))
 		return hr;
 
-#if 0	// テクスチャ・サーフェスを作成する場合
+#if 0 // テクスチャ・サーフェスを作成する場合
 	D3DCAPS9 d3dcaps;
 	m_D3DDev->GetDeviceCaps(&d3dcaps);
 	if (d3dcaps.TextureCaps & D3DPTEXTURECAPS_POW2) {
@@ -593,7 +593,7 @@ bool VMR9Allocator::WaitCapture(DWORD TimeOut)
 
 bool VMR9Allocator::GetCaptureSurface(IDirect3DSurface9 **ppSurface)
 {
-	return m_CaptureSurface.QueryInterface(ppSurface);
+	return SUCCEEDED(m_CaptureSurface.QueryInterface(ppSurface));
 }
 
 
@@ -888,7 +888,7 @@ COMMemoryPointer<> VideoRenderer_VMR9Renderless::GetCurrentImage()
 							pSurface->UnlockRect();
 #endif
 
-							size_t BitsSize = (desc.Width * 3 + 3) / 4 * 4 * Height;
+							const size_t BitsSize = (desc.Width * 3 + 3) / 4 * 4 * Height;
 							pDib = static_cast<BYTE *>(::CoTaskMemAlloc(sizeof(BITMAPINFOHEADER) + BitsSize));
 							if (pDib != nullptr) {
 								::CopyMemory(pDib, &bmi.bmiHeader, sizeof(BITMAPINFOHEADER));
@@ -935,4 +935,4 @@ bool VideoRenderer_VMR9Renderless::SetVisible(bool Visible)
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

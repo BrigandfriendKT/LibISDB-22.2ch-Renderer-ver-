@@ -168,4 +168,4 @@ void StreamBufferFilter::SetClearOnReset(bool Clear)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

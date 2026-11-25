@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.12)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(LibISDB CXX)
@@ -74,6 +74,7 @@ add_library(LibISDB STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/Utilities/CRC.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Utilities/Lock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Utilities/MD5.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Utilities/StringFormat.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Utilities/Thread.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Utilities/Utilities.cpp
 )

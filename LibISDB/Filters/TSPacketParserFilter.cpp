@@ -228,7 +228,7 @@ void TSPacketParserFilter::SyncPacket(const uint8_t *pData, size_t Size)
 {
 	m_InputBytes += Size;
 
-	static const uint8_t SYNC_BYTE = 0x47_u8;
+	constexpr uint8_t SYNC_BYTE = 0x47_u8;
 	size_t CurPos = 0;
 
 	while (CurPos < Size) {
@@ -365,4 +365,4 @@ void TSPacketParserFilter::OutputPacket(TSPacket &Packet)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

@@ -41,4 +41,4 @@
 #endif
 
 
-#endif	// ifndef LIBISDB_DIRECTSHOW_BASE_H
+#endif // ifndef LIBISDB_DIRECTSHOW_BASE_H

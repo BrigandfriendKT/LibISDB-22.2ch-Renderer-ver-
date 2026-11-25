@@ -52,7 +52,7 @@ namespace LibISDB::DirectShow
 		HBITMAP m_hbmOld;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_IMAGE_MIXER_VMR_H
+#endif // ifndef LIBISDB_IMAGE_MIXER_VMR_H

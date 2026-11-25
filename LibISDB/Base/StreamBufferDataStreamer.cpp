@@ -113,4 +113,4 @@ void StreamBufferDataStreamer::ClearOutput()
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

@@ -51,7 +51,7 @@ namespace LibISDB
 	class PIDMapManager
 	{
 	public:
-		PIDMapManager();
+		PIDMapManager() noexcept;
 		~PIDMapManager();
 
 		bool StorePacket(const TSPacket *pPacket);
@@ -70,7 +70,7 @@ namespace LibISDB
 		uint16_t m_MapCount;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_PID_MAP_H
+#endif // ifndef LIBISDB_PID_MAP_H

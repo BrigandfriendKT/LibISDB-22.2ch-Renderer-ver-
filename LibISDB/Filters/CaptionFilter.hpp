@@ -118,7 +118,7 @@ namespace LibISDB
 		DRCSMap *m_pDRCSMap;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_CAPTION_FILTER_H
+#endif // ifndef LIBISDB_CAPTION_FILTER_H

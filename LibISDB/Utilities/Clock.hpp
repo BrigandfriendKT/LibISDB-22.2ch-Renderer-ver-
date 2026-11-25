@@ -54,7 +54,7 @@ namespace LibISDB
 			return ::GetTickCount64();
 		}
 
-#else	// LIBISDB_WINDOWS
+#else // LIBISDB_WINDOWS
 
 		typedef uint64_t ClockType;
 		static constexpr ClockType ClocksPerSec = 1000000000_u64;
@@ -99,7 +99,7 @@ namespace LibISDB
 		static constexpr ClockType ClocksPerSec = 1000000_u64;
 		typedef std::chrono::microseconds DurationType;
 
-		HighPrecisionTickClock()
+		HighPrecisionTickClock() noexcept
 		{
 			if (!::QueryPerformanceFrequency(&m_Frequency))
 				m_Frequency.QuadPart = 0;
@@ -120,7 +120,7 @@ namespace LibISDB
 	private:
 		::LARGE_INTEGER m_Frequency;
 
-#else	// LIBISDB_WINDOWS
+#else // LIBISDB_WINDOWS
 
 		typedef uint64_t ClockType;
 		static constexpr ClockType ClocksPerSec = 1000000000_u64;
@@ -153,7 +153,7 @@ namespace LibISDB
 #endif
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_CLOCK_H
+#endif // ifndef LIBISDB_CLOCK_H

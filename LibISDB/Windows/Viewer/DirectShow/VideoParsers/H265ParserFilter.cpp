@@ -39,7 +39,7 @@ H265ParserFilter::H265ParserFilter(LPUNKNOWN pUnk, HRESULT *phr)
 	: CTransInPlaceFilter(TEXT("H.265 Parser Filter"), pUnk, __uuidof(H265ParserFilter), phr, FALSE)
 	, m_H265Parser(this)
 {
-	LIBISDB_TRACE(LIBISDB_STR("H265ParserFilter::H265ParserFilter() %p\n"), this);
+	LIBISDB_TRACE(LIBISDB_STR("H265ParserFilter::H265ParserFilter() {}\n"), static_cast<void *>(this));
 
 	*phr = S_OK;
 }
@@ -88,10 +88,10 @@ HRESULT H265ParserFilter::CheckInputType(const CMediaType *mtIn)
 HRESULT H265ParserFilter::Transform(IMediaSample *pSample)
 {
 	BYTE *pData = nullptr;
-	HRESULT hr = pSample->GetPointer(&pData);
+	const HRESULT hr = pSample->GetPointer(&pData);
 	if (FAILED(hr))
 		return hr;
-	LONG DataSize = pSample->GetActualDataLength();
+	const LONG DataSize = pSample->GetActualDataLength();
 
 	CAutoLock Lock(&m_ParserLock);
 
@@ -151,7 +151,7 @@ HRESULT H265ParserFilter::StopStreaming()
 
 HRESULT H265ParserFilter::BeginFlush()
 {
-	HRESULT hr = CTransInPlaceFilter::BeginFlush();
+	const HRESULT hr = CTransInPlaceFilter::BeginFlush();
 
 	CAutoLock Lock(&m_ParserLock);
 
@@ -189,7 +189,7 @@ void H265ParserFilter::OnAccessUnit(const H265Parser *pParser, const H265AccessU
 		m_VideoInfo = Info;
 
 		LIBISDB_TRACE(
-			LIBISDB_STR("H.265 access unit %d x %d [SAR %d:%d (DAR %d:%d)] %d/%d\n"),
+			LIBISDB_STR("H.265 access unit {} x {} [SAR {}:{} (DAR {}:{})] {}/{}\n"),
 			OrigWidth, OrigHeight, SARX, SARY, AspectX, AspectY,
 			Info.FrameRate.Num, Info.FrameRate.Denom);
 
@@ -199,4 +199,4 @@ void H265ParserFilter::OnAccessUnit(const H265Parser *pParser, const H265AccessU
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

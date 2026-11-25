@@ -52,7 +52,7 @@ constexpr int FRAME_RATE_FACTOR   = 1001;
 constexpr int FRAME_RATE_1SEG_NUM = 15000;
 
 // バッファサイズ
-constexpr long SAMPLE_BUFFER_SIZE = 0x800000L;	// 8MiB
+constexpr long SAMPLE_BUFFER_SIZE = 0x800000L; // 8MiB
 
 constexpr DWORD INITIAL_BITRATE = 32000000;
 constexpr int INITIAL_WIDTH  = 1920;
@@ -66,7 +66,7 @@ constexpr REFERENCE_TIME CalcFrameTime(LONGLONG Frames, bool OneSeg = false) {
 	return Frames * REFERENCE_TIME_SECOND * FRAME_RATE_FACTOR / (OneSeg ? FRAME_RATE_1SEG_NUM : FRAME_RATE_NUM);
 }
 
-}	// namespace
+} // namespace
 
 
 H264ParserFilter::H264ParserFilter(LPUNKNOWN pUnk, HRESULT *phr)
@@ -76,7 +76,7 @@ H264ParserFilter::H264ParserFilter(LPUNKNOWN pUnk, HRESULT *phr)
 	, m_AdjustFrameRate(false)
 	, m_Adjust1Seg(false)
 {
-	LIBISDB_TRACE(LIBISDB_STR("H264ParserFilter::H264ParserFilter() %p\n"),this);
+	LIBISDB_TRACE(LIBISDB_STR("H264ParserFilter::H264ParserFilter() {}\n"), static_cast<void *>(this));
 
 	m_MediaType.InitMediaType();
 	m_MediaType.SetType(&MEDIATYPE_Video);
@@ -173,7 +173,7 @@ HRESULT H264ParserFilter::DecideBufferSize(IMemAllocator * pAllocator, ALLOCATOR
 
 	// アロケータプロパティを設定しなおす
 	ALLOCATOR_PROPERTIES Actual;
-	HRESULT hr = pAllocator->SetProperties(pprop, &Actual);
+	const HRESULT hr = pAllocator->SetProperties(pprop, &Actual);
 	if (FAILED(hr))
 		return hr;
 
@@ -221,7 +221,7 @@ HRESULT H264ParserFilter::StopStreaming()
 
 HRESULT H264ParserFilter::BeginFlush()
 {
-	HRESULT hr = CTransformFilter::BeginFlush();
+	const HRESULT hr = CTransformFilter::BeginFlush();
 
 	CAutoLock Lock(&m_ParserLock);
 
@@ -239,7 +239,7 @@ HRESULT H264ParserFilter::Transform(IMediaSample *pIn, IMediaSample *pOut)
 	HRESULT hr = pIn->GetPointer(&pInData);
 	if (FAILED(hr))
 		return hr;
-	LONG InDataSize = pIn->GetActualDataLength();
+	const LONG InDataSize = pIn->GetActualDataLength();
 
 	// 出力データポインタを取得する
 	BYTE *pOutData = nullptr;
@@ -276,7 +276,7 @@ HRESULT H264ParserFilter::Transform(IMediaSample *pIn, IMediaSample *pOut)
 						for (size_t i = 1; i <= Frames; i++) {
 							SampleData *pSampleData = m_SampleQueue.front();
 							m_SampleQueue.pop_front();
-							End = m_PrevTime + Duration * (REFERENCE_TIME)i / (REFERENCE_TIME)Frames;
+							End = m_PrevTime + Duration * static_cast<REFERENCE_TIME>(i) / static_cast<REFERENCE_TIME>(Frames);
 							pSampleData->SetTime(Start, End);
 							Start = End;
 							m_OutSampleQueue.push_back(pSampleData);
@@ -288,11 +288,12 @@ HRESULT H264ParserFilter::Transform(IMediaSample *pIn, IMediaSample *pOut)
 					if (m_PrevTime < 0) {
 						bReset = true;
 					} else {
-						LONGLONG Diff = (m_PrevTime + CalcFrameTime(m_SampleCount, m_Adjust1Seg)) - StartTime;
+						const REFERENCE_TIME Diff = (m_PrevTime + CalcFrameTime(m_SampleCount, m_Adjust1Seg)) - StartTime;
 						if (std::llabs(Diff) > MAX_SAMPLE_TIME_JITTER) {
 							bReset = true;
-							LIBISDB_TRACE(LIBISDB_STR("Reset H.264 sample time (Diff = %.5f)\n"),
-								  (double)Diff / (double)REFERENCE_TIME_SECOND);
+							LIBISDB_TRACE(
+								LIBISDB_STR("Reset H.264 sample time (Diff = {:.5f})\n"),
+								(double)Diff / (double)REFERENCE_TIME_SECOND);
 						}
 					}
 					if (bReset) {
@@ -319,7 +320,7 @@ HRESULT H264ParserFilter::Transform(IMediaSample *pIn, IMediaSample *pOut)
 		do {
 			SampleData *pSampleData = m_OutSampleQueue.front();
 
-			hr = pOut->SetActualDataLength((long)pSampleData->GetSize());
+			hr = pOut->SetActualDataLength(static_cast<long>(pSampleData->GetSize()));
 			if (SUCCEEDED(hr)) {
 				::CopyMemory(pOutData, pSampleData->GetData(), pSampleData->GetSize());
 
@@ -472,8 +473,8 @@ void H264ParserFilter::OnAccessUnit(const H264Parser *pParser, const H264AccessU
 				m_SampleQueue.push_back(pSampleData);
 			} else {
 				if (m_PrevTime >= 0) {
-					REFERENCE_TIME StartTime = m_PrevTime + CalcFrameTime(m_SampleCount, m_Adjust1Seg);
-					REFERENCE_TIME EndTime = m_PrevTime + CalcFrameTime(m_SampleCount + 1, m_Adjust1Seg);
+					const REFERENCE_TIME StartTime = m_PrevTime + CalcFrameTime(m_SampleCount, m_Adjust1Seg);
+					const REFERENCE_TIME EndTime = m_PrevTime + CalcFrameTime(m_SampleCount + 1, m_Adjust1Seg);
 					pSampleData->SetTime(StartTime, EndTime);
 				}
 				m_OutSampleQueue.push_back(pSampleData);
@@ -509,7 +510,7 @@ void H264ParserFilter::OnAccessUnit(const H264Parser *pParser, const H264AccessU
 		m_VideoInfo = Info;
 
 		LIBISDB_TRACE(
-			LIBISDB_STR("H.264 access unit %d x %d [SAR %d:%d (DAR %d:%d)] %d/%d\n"),
+			LIBISDB_STR("H.264 access unit {} x {} [SAR {}:{} (DAR {}:{})] {}/{}\n"),
 			OrigWidth, OrigHeight, SARX, SARY, AspectX, AspectY,
 			Info.FrameRate.Num, Info.FrameRate.Denom);
 
@@ -563,7 +564,7 @@ H264ParserFilter::SampleDataPool::SampleDataPool()
 H264ParserFilter::SampleDataPool::~SampleDataPool()
 {
 	LIBISDB_TRACE(
-		LIBISDB_STR("H264ParserFilter::SampleDataPool::~SampleDataPool() Data count %zu / %zu\n"),
+		LIBISDB_STR("H264ParserFilter::SampleDataPool::~SampleDataPool() Data count {} / {}\n"),
 		m_DataCount, m_MaxData);
 
 	Clear();
@@ -612,4 +613,4 @@ void H264ParserFilter::SampleDataPool::Restore(SampleData *pData)
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

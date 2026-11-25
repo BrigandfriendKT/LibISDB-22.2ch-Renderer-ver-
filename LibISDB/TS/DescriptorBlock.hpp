@@ -42,15 +42,15 @@ namespace LibISDB
 	public:
 		DescriptorBlock() = default;
 		DescriptorBlock(const DescriptorBlock &Src);
-		DescriptorBlock(DescriptorBlock &&Src);
+		DescriptorBlock(DescriptorBlock &&Src) noexcept;
 		virtual ~DescriptorBlock() = default;
 		DescriptorBlock & operator = (const DescriptorBlock &Src);
-		DescriptorBlock & operator = (DescriptorBlock &&Src);
+		DescriptorBlock & operator = (DescriptorBlock &&Src) noexcept;
 
 		int ParseBlock(const uint8_t *pData, size_t DataLength);
 		const DescriptorBase * ParseBlock(const uint8_t *pData, size_t DataLength, uint8_t Tag);
 
-		virtual void Reset();
+		virtual void Reset() noexcept;
 
 		int GetDescriptorCount() const;
 		const DescriptorBase * GetDescriptorByIndex(int Index) const;
@@ -77,7 +77,7 @@ namespace LibISDB
 		std::vector<std::unique_ptr<DescriptorBase>> m_DescriptorList;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_DESCRIPTOR_BLOCK_H
+#endif // ifndef LIBISDB_DESCRIPTOR_BLOCK_H

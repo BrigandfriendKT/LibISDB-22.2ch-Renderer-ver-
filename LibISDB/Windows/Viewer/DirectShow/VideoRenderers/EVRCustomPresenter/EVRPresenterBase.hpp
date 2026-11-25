@@ -62,4 +62,4 @@ constexpr GUID SampleAttribute_SwapChain = {
 };
 
 
-#endif	// ifndef LIBISDB_EVR_PRESENTER_BASE_H
+#endif // ifndef LIBISDB_EVR_PRESENTER_BASE_H

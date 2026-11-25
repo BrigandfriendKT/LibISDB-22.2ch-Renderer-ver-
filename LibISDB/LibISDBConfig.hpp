@@ -41,4 +41,17 @@
 //#define LIBISDB_H264_STRICT_1SEG
 
 
-#endif	// ifndef LIBISDB_CONFIG_H
+#if __has_include("../Thirdparty/fdk-aac/libAACdec/include/aacdecoder_lib.h")
+#define LIBISDB_HAS_FDK_AAC
+#endif
+
+
+#if __has_include("../Thirdparty/ffmpeg-min/include/libavcodec/avcodec.h") && \
+    __has_include("../Thirdparty/ffmpeg-min/include/libavutil/avutil.h")
+// 22.2ch等、8chを超えるAAC-LATM音声のデコードに使用する
+// (FDK-AACは内部構造上8chまでしかデコードできないため)
+#define LIBISDB_HAS_LIBAV_AAC
+#endif
+
+
+#endif // ifndef LIBISDB_CONFIG_H

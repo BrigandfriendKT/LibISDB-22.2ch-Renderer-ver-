@@ -49,7 +49,7 @@ namespace LibISDB::DirectShow
 		COMPointer<ICaptureGraphBuilder2> m_CaptureGraphBuilder2;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_VIDEO_RENDERER_OVERLAY_MIXER_H
+#endif // ifndef LIBISDB_VIDEO_RENDERER_OVERLAY_MIXER_H

@@ -125,7 +125,7 @@ namespace LibISDB
 	*/
 	uint16_t BCDTimeHMToMinute(uint16_t BCD) noexcept;
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_ARIB_TIME_H
+#endif // ifndef LIBISDB_ARIB_TIME_H

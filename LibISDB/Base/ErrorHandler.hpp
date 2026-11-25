@@ -180,7 +180,7 @@ namespace LibISDB
 	}
 #endif
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_ERROR_HANDLER_H
+#endif // ifndef LIBISDB_ERROR_HANDLER_H

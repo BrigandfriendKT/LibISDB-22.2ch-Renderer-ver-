@@ -104,4 +104,4 @@ bool VideoRenderer_OverlayMixer::Finalize()
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

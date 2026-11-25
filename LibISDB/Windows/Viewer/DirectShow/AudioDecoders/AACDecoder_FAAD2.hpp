@@ -52,6 +52,9 @@ namespace LibISDB::DirectShow
 		bool GetChannelMap(int Channels, int *pMap) const override;
 		bool GetDownmixInfo(ReturnArg<DownmixInfo> Info) const override;
 
+	// AACDecoder_FAAD2
+		static void GetVersion(std::string *pVersion);
+
 	private:
 		bool OpenDecoder() override;
 		void CloseDecoder() override;
@@ -62,7 +65,7 @@ namespace LibISDB::DirectShow
 		uint8_t m_LastChannelConfig;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_AAC_DECODER_FAAD2_H
+#endif // ifndef LIBISDB_AAC_DECODER_FAAD2_H

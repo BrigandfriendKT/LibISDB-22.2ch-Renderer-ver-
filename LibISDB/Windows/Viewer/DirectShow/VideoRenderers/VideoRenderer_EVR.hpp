@@ -74,7 +74,6 @@ namespace LibISDB::DirectShow
 		HRESULT UpdateRenderingPrefs(IMFVideoDisplayControl *pDisplayControl);
 
 #ifdef LIBISDB_EVR_USE_VIDEO_WINDOW
-		HWND m_hwndVideo = nullptr;
 		HWND m_hwndMessageDrain = nullptr;
 		bool m_ShowCursor = true;
 
@@ -83,7 +82,7 @@ namespace LibISDB::DirectShow
 #endif
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_VIDEO_RENDERER_EVR_H
+#endif // ifndef LIBISDB_VIDEO_RENDERER_EVR_H

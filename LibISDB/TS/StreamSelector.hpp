@@ -60,6 +60,7 @@ namespace LibISDB
 			DolbyDigitalPlus = 0x00001000UL,
 			Caption          = 0x00002000UL,
 			DataCarrousel    = 0x00004000UL,
+			LIBISDB_ENUM_FLAGS_TRAILER,
 			Audio            = MPEG1Audio | MPEG2Audio | AAC | MPEG4Audio | AC3 | DTS | TrueHD | DolbyDigitalPlus,
 			Vido             = MPEG1Video | MPEG2Video | MPEG4Visual | H264 | H265,
 			All              = 0xFFFFFFFFUL
@@ -68,17 +69,17 @@ namespace LibISDB
 		class StreamTypeTable
 		{
 		public:
-			StreamTypeTable();
-			StreamTypeTable(StreamFlag Flags);
+			StreamTypeTable() noexcept;
+			StreamTypeTable(StreamFlag Flags) noexcept;
 
 			bool operator [] (size_t Index) const { return m_Bitset[Index]; }
 
-			void Set() { m_Bitset.set(); }
+			void Set() noexcept { m_Bitset.set(); }
 			void Set(size_t Pos, bool Value = true) { m_Bitset.set(Pos, Value); }
-			void Reset() { m_Bitset.reset(); }
+			void Reset() noexcept { m_Bitset.reset(); }
 			void Reset(size_t Pos) { m_Bitset.reset(Pos); }
 
-			void FromStreamFlags(StreamFlag Flags);
+			void FromStreamFlags(StreamFlag Flags) noexcept;
 
 		private:
 			std::bitset<256> m_Bitset;
@@ -138,9 +139,7 @@ namespace LibISDB
 		uint8_t m_Version;
 	};
 
-	LIBISDB_ENUM_FLAGS(StreamSelector::StreamFlag)
-
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_STREAM_SELECTOR_H
+#endif // ifndef LIBISDB_STREAM_SELECTOR_H

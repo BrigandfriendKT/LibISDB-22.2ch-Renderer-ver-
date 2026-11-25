@@ -162,4 +162,4 @@ uint16_t BCDTimeHMToMinute(uint16_t BCD) noexcept
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

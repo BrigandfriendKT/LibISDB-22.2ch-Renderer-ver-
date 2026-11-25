@@ -42,7 +42,7 @@ namespace LibISDB::DirectShow
 	public:
 		RendererType GetRendererType() const noexcept override { return RendererType::EVRCustomPresenter; }
 		bool Finalize() override;
-		bool HasProperty() override { return false; }	// プロパティの数値が不定値になる
+		bool HasProperty() override { return false; } // プロパティの数値が不定値になる
 
 	private:
 		HRESULT InitializePresenter(IBaseFilter *pFilter) override;
@@ -50,7 +50,7 @@ namespace LibISDB::DirectShow
 		COMPointer<IMFVideoPresenter> m_Presenter;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_VIDEO_RENDERER_EVR_CUSTOM_PRESENTER_H
+#endif // ifndef LIBISDB_VIDEO_RENDERER_EVR_CUSTOM_PRESENTER_H

@@ -69,4 +69,4 @@ void StreamSourceEngine::OnStreamingStart(SourceFilter *pSource)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

@@ -66,7 +66,7 @@ namespace LibISDB::DirectShow
 		H265Parser m_H265Parser;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_H265_PARSER_FILTER_H
+#endif // ifndef LIBISDB_H265_PARSER_FILTER_H

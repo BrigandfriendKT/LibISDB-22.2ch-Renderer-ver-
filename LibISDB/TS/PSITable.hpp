@@ -66,7 +66,7 @@ namespace LibISDB
 
 		virtual void Reset();
 
-		unsigned long GetCRCErrorCount() const;
+		unsigned long GetCRCErrorCount() const noexcept;
 
 		void SetUniqueID(unsigned long long UniqueID) noexcept { m_UniqueID = UniqueID; }
 		unsigned long long GetUniqueID() const noexcept { return m_UniqueID; }
@@ -222,7 +222,7 @@ namespace LibISDB
 		unsigned long long m_LastUpdatedTableUniqueID;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_SPI_TABLE_H
+#endif // ifndef LIBISDB_SPI_TABLE_H

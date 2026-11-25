@@ -62,7 +62,7 @@ namespace LibISDB::DirectShow
 		COMPointer<VMR9Allocator> m_Allocator;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_VIDEO_RENDERER_VMR9_RENDERLESS_H
+#endif // ifndef LIBISDB_VIDEO_RENDERER_VMR9_RENDERLESS_H

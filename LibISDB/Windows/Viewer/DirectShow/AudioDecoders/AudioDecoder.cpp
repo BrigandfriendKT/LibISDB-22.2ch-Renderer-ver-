@@ -50,4 +50,4 @@ void AudioDecoder::ClearAudioInfo()
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

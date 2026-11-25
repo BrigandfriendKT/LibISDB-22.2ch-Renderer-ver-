@@ -54,4 +54,4 @@
 #undef GetFreeSpace
 
 
-#endif	// ifndef LIBISDB_WINDOWS_H
+#endif // ifndef LIBISDB_WINDOWS_H

@@ -49,7 +49,7 @@ namespace LibISDB
 	typedef FileStreamNative FileStream;
 	typedef FileStreamGenericC BufferedFileStream;
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_FILE_STREAM_H
+#endif // ifndef LIBISDB_FILE_STREAM_H

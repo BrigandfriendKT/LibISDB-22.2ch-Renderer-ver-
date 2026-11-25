@@ -70,4 +70,4 @@ bool SourceFilter::RemoveEventListener(EventListener *pEventListener)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

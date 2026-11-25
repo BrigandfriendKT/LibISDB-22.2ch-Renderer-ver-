@@ -53,9 +53,10 @@ namespace LibISDB::DirectShow
 			OverlayMixer,       /**< Overlay Mixer */
 			madVR,              /**< madVR */
 			EVRCustomPresenter, /**< EVR Custom Presenter */
+			MPCVideoRenderer,   /**< MPC Video Renderer */
 		};
 
-		VideoRenderer() noexcept;
+		VideoRenderer() = default;
 		virtual ~VideoRenderer();
 
 		virtual RendererType GetRendererType() const noexcept = 0;
@@ -75,6 +76,7 @@ namespace LibISDB::DirectShow
 		virtual bool ShowProperty(HWND hwndOwner);
 		virtual bool HasProperty();
 		IBaseFilter * GetRendererFilter() const { return m_Renderer.Get(); }
+		HWND GetVideoWindow() const noexcept { return m_hwndVideo; }
 		virtual bool SetCrop1088To1080(bool Crop) { return false; }
 		virtual bool SetClipToDevice(bool Clip) { return false; }
 
@@ -87,9 +89,10 @@ namespace LibISDB::DirectShow
 	protected:
 		COMPointer<IBaseFilter> m_Renderer;
 		COMPointer<IGraphBuilder> m_GraphBuilder;
-		HWND m_hwndRender;
-		bool m_Crop1088To1080;
-		bool m_ClipToDevice;
+		HWND m_hwndRender = nullptr;
+		HWND m_hwndVideo = nullptr;
+		bool m_Crop1088To1080 = true;
+		bool m_ClipToDevice = true;
 	};
 
 	/** デフォルト映像レンダラクラス */
@@ -112,6 +115,7 @@ namespace LibISDB::DirectShow
 
 	protected:
 		bool InitializeBasicVideo(IGraphBuilder *pGraphBuilder, HWND hwndRender, HWND hwndMessageDrain);
+		virtual HWND FindVideoWindow();
 
 		COMPointer<IVideoWindow> m_VideoWindow;
 		COMPointer<IBasicVideo> m_BasicVideo;
@@ -137,7 +141,7 @@ namespace LibISDB::DirectShow
 		bool m_NoSourcePosition;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_VIDEO_RENDERER_H
+#endif // ifndef LIBISDB_VIDEO_RENDERER_H

@@ -50,18 +50,7 @@ namespace LibISDB
 			uint8_t TCS;
 			uint8_t RollupMode;
 
-			bool operator == (const LanguageInfo &rhs) const noexcept
-			{
-				return (LanguageTag == rhs.LanguageTag)
-					&& (DMF == rhs.DMF)
-					&& (DC == rhs.DC)
-					&& (LanguageCode == rhs.LanguageCode)
-					&& (Format == rhs.Format)
-					&& (TCS == rhs.TCS)
-					&& (RollupMode == rhs.RollupMode);
-			}
-
-			bool operator != (const LanguageInfo &rhs) const noexcept { return !(*this == rhs); }
+			bool operator == (const LanguageInfo &rhs) const noexcept = default;
 		};
 
 		struct TimeInfo {
@@ -115,8 +104,8 @@ namespace LibISDB
 		void OnPESPacket(const PESParser *pParser, const PESPacket *pPacket) override;
 
 		bool ParseManagementData(const uint8_t *pData, uint32_t DataSize);
-		bool ParseCaptionData(const uint8_t *pData, uint32_t DataSize);
-		bool ParseUnitData(const uint8_t *pData, uint32_t *pDataSize);
+		bool ParseCaptionData(const uint8_t *pData, uint32_t DataSize, uint8_t DataGroupIndex);
+		bool ParseUnitData(const uint8_t *pData, uint32_t *pDataSize, uint8_t DataGroupIndex);
 		bool ParseDRCSUnitData(const uint8_t *pData, uint32_t DataSize);
 		void OnCaption(const CharType *pText, const ARIBStringDecoder::FormatList *pFormatList);
 
@@ -131,7 +120,7 @@ namespace LibISDB
 		uint8_t m_DataGroupID;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_CAPTION_PARSER_H
+#endif // ifndef LIBISDB_CAPTION_PARSER_H

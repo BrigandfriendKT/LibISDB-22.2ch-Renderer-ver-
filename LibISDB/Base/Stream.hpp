@@ -93,9 +93,10 @@ namespace LibISDB
 			RandomAccess    = 0x0400U, /**< ランダムアクセス */
 			PriorityLow     = 0x0800U, /**< 低優先度 */
 			PriorityIdle    = 0x1000U, /**< 最低優先度 */
+			LIBISDB_ENUM_FLAGS_TRAILER
 		};
 
-		virtual bool Open(const CStringView &FileName, OpenFlag Flags) = 0;
+		virtual bool Open(const String &FileName, OpenFlag Flags) = 0;
 
 		virtual bool Preallocate(SizeType Size) { return false; }
 		virtual bool SetPreallocationUnit(SizeType Unit) { return false; }
@@ -108,9 +109,7 @@ namespace LibISDB
 		String m_FileName;
 	};
 
-	LIBISDB_ENUM_FLAGS(FileStreamBase::OpenFlag)
-
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_STREAM_H
+#endif // ifndef LIBISDB_STREAM_H

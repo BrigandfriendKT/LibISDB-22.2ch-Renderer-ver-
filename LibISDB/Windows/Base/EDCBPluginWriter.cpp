@@ -53,7 +53,7 @@ EDCBPluginWriter::~EDCBPluginWriter()
 }
 
 
-bool EDCBPluginWriter::Load(const CStringView &FileName)
+bool EDCBPluginWriter::Load(const String &FileName)
 {
 	if (m_hLib != nullptr)
 		return false;
@@ -112,7 +112,7 @@ void EDCBPluginWriter::Free()
 }
 
 
-bool EDCBPluginWriter::Open(const CStringView &FileName, OpenFlag Flags)
+bool EDCBPluginWriter::Open(const String &FileName, OpenFlag Flags)
 {
 	if (!m_hLib || m_IsOpen) {
 		return false;
@@ -141,7 +141,7 @@ bool EDCBPluginWriter::Open(const CStringView &FileName, OpenFlag Flags)
 }
 
 
-bool EDCBPluginWriter::Reopen(const CStringView &FileName, OpenFlag Flags)
+bool EDCBPluginWriter::Reopen(const String &FileName, OpenFlag Flags)
 {
 	Close();
 
@@ -181,7 +181,7 @@ size_t EDCBPluginWriter::Write(const void *pBuffer, size_t Size)
 #endif
 
 	DWORD Write = 0;
-	m_pAddTSBuff(m_ID, static_cast<BYTE *>(const_cast<void *>(pBuffer)), (DWORD)Size, &Write);
+	m_pAddTSBuff(m_ID, static_cast<BYTE *>(const_cast<void *>(pBuffer)), static_cast<DWORD>(Size), &Write);
 
 	return Write;
 }
@@ -249,4 +249,4 @@ std::string EDCBPluginWriter::ErrorCategory::message(int ev) const
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

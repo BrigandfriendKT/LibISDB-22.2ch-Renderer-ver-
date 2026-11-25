@@ -66,7 +66,7 @@ namespace LibISDB
 		static ValueType Calc(const uint8_t *pData, size_t DataSize, ValueType CRC = InitialValue) noexcept;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_CRC_H
+#endif // ifndef LIBISDB_CRC_H

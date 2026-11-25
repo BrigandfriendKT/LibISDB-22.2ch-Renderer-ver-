@@ -34,8 +34,10 @@
 #include "VideoRenderer_EVR.hpp"
 #include "VideoRenderer_OverlayMixer.hpp"
 #include "VideoRenderer_madVR.hpp"
+#include "VideoRenderer_MPCVideoRenderer.hpp"
 #include "EVRCustomPresenter/VideoRenderer_EVRCustomPresenter.hpp"
 #include "../DirectShowUtilities.hpp"
+#include "../../../../Utilities/StringFormat.hpp"
 #include "../../../../Utilities/StringUtilities.hpp"
 #include "../../../../Base/DebugDef.hpp"
 
@@ -60,8 +62,8 @@ bool VideoRenderer_Default::InitializeBasicVideo(
 		return false;
 	}
 
-	m_VideoWindow->put_Owner((OAHWND)hwndRender);
-	m_VideoWindow->put_MessageDrain((OAHWND)hwndMessageDrain);
+	m_VideoWindow->put_Owner(reinterpret_cast<OAHWND>(hwndRender));
+	m_VideoWindow->put_MessageDrain(reinterpret_cast<OAHWND>(hwndMessageDrain));
 	m_VideoWindow->put_WindowStyle(WS_CHILD | WS_CLIPSIBLINGS);
 	m_VideoWindow->put_BackgroundPalette(OATRUE);
 	m_VideoWindow->put_BorderColor(RGB(0, 0, 0));
@@ -81,8 +83,58 @@ bool VideoRenderer_Default::InitializeBasicVideo(
 	}
 
 	m_GraphBuilder = pGraphBuilder;
+	m_hwndRender = hwndRender;
+
+	if (!m_Renderer) {
+		IBaseFilter *pFilter = nullptr;
+		if (SUCCEEDED(pGraphBuilder->FindFilterByName(L"Video Renderer", &pFilter)))
+			m_Renderer.Attach(pFilter);
+	}
+
+	if (m_hwndVideo == nullptr && m_Renderer)
+		m_hwndVideo = FindVideoWindow();
 
 	return true;
+}
+
+
+HWND VideoRenderer_Default::FindVideoWindow()
+{
+	if (!m_Renderer)
+		return nullptr;
+
+	IEnumPins *pEnumPins;
+	if (FAILED(m_Renderer->EnumPins(&pEnumPins)))
+		return nullptr;
+
+	HWND hwndVideo = nullptr;
+	IPin *pPin;
+	ULONG cFetched;
+
+	while ((hwndVideo == nullptr) && (pEnumPins->Next(1, &pPin, &cFetched) == S_OK)) {
+		PIN_INFO Pin;
+
+		if (SUCCEEDED(pPin->QueryPinInfo(&Pin))){
+			if (Pin.dir == PINDIR_INPUT) {
+				IOverlay *pOverlay;
+				if (SUCCEEDED(pPin->QueryInterface(IID_PPV_ARGS(&pOverlay)))) {
+					HWND hwnd = nullptr;
+					if (SUCCEEDED(pOverlay->GetWindowHandle(&hwnd)))
+						hwndVideo = hwnd;
+					pOverlay->Release();
+				}
+			}
+
+			if (Pin.pFilter != nullptr)
+				Pin.pFilter->Release();
+		}
+
+		pPin->Release();
+	}
+
+	pEnumPins->Release();
+
+	return hwndVideo;
 }
 
 
@@ -94,7 +146,7 @@ bool VideoRenderer_Default::Initialize(
 		return false;
 	}
 
-	HRESULT hr = pGraphBuilder->Render(pInputPin);
+	const HRESULT hr = pGraphBuilder->Render(pInputPin);
 	if (FAILED(hr)) {
 		SetHRESULTError(hr, LIBISDB_STR("映像レンダラを構築できません。"));
 		return false;
@@ -228,10 +280,10 @@ bool VideoRenderer_Basic::Initialize(
 	hr = ::CoCreateInstance(
 		m_clsidRenderer, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(m_Renderer.GetPP()));
 	if (FAILED(hr)) {
-		StringPrintf(
+		StringFormat(
 			Message,
-			LIBISDB_STR("%") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR(" のインスタンスを作成できません。"),
-			m_RendererName.c_str());
+			LIBISDB_STR("{} のインスタンスを作成できません。"),
+			m_RendererName);
 		SetError(HRESULTErrorCode(hr), Message, LIBISDB_STR("指定したレンダラがインストールされているか確認してください。"));
 		return false;
 	}
@@ -239,10 +291,10 @@ bool VideoRenderer_Basic::Initialize(
 	hr = pGraphBuilder->AddFilter(m_Renderer.Get(), m_RendererName.c_str());
 	if (FAILED(hr)) {
 		m_Renderer.Release();
-		StringPrintf(
+		StringFormat(
 			Message,
-			LIBISDB_STR("%") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR(" をフィルタグラフに追加できません。"),
-			m_RendererName.c_str());
+			LIBISDB_STR("{} をフィルタグラフに追加できません。"),
+			m_RendererName);
 		SetHRESULTError(hr, Message);
 		return false;
 	}
@@ -307,7 +359,7 @@ bool VideoRenderer_Basic::SetVideoPosition(
 		m_VideoWindow->SetWindowPosition(WindowRect.left, WindowRect.top, WindowWidth, WindowHeight);
 
 		LIBISDB_TRACE(
-			LIBISDB_STR("VideoRenderer_Basic::SetVideoPosition() : Src [%d, %d, %d, %d] Dest [%d, %d, %d, %d] -> [%d, %d, %d, %d]\n"),
+			LIBISDB_STR("VideoRenderer_Basic::SetVideoPosition() : Src [{}, {}, {}, {}] Dest [{}, {}, {}, {}] -> [{}, {}, {}, {}]\n"),
 			SourceRect.left, SourceRect.top, SourceRect.right, SourceRect.bottom,
 			DestRect.left, DestRect.top, DestRect.right, DestRect.bottom,
 			rcDest.left, rcDest.top, rcDest.right, rcDest.bottom);
@@ -321,14 +373,6 @@ bool VideoRenderer_Basic::SetVideoPosition(
 
 
 
-VideoRenderer::VideoRenderer() noexcept
-	: m_hwndRender(nullptr)
-	, m_Crop1088To1080(true)
-	, m_ClipToDevice(true)
-{
-}
-
-
 VideoRenderer::~VideoRenderer()
 {
 	LIBISDB_TRACE(LIBISDB_STR("VideoRenderer::~VideoRenderer()\n"));
@@ -339,6 +383,7 @@ bool VideoRenderer::Finalize()
 {
 	m_Renderer.Release();
 	m_GraphBuilder.Release();
+	m_hwndVideo = nullptr;
 
 	return true;
 }
@@ -389,6 +434,9 @@ VideoRenderer * VideoRenderer::CreateRenderer(RendererType Type)
 
 	case RendererType::EVRCustomPresenter:
 		return new VideoRenderer_EVRCustomPresenter;
+
+	case RendererType::MPCVideoRenderer:
+		return new VideoRenderer_MPCVideoRenderer;
 	}
 
 	return nullptr;
@@ -407,6 +455,7 @@ LPCTSTR VideoRenderer::EnumRendererName(int Index)
 		TEXT("Overlay Mixer"),
 		TEXT("madVR"),
 		TEXT("EVR Custom Presenter"),
+		TEXT("MPC Video Renderer"),
 	};
 
 	if (static_cast<unsigned int>(Index) >= std::size(pszRendererName))
@@ -464,10 +513,13 @@ bool VideoRenderer::IsAvailable(RendererType Type)
 
 	case RendererType::madVR:
 		return TestCreateInstance(VideoRenderer_madVR::GetCLSID());
+
+	case RendererType::MPCVideoRenderer:
+		return TestCreateInstance(VideoRenderer_MPCVideoRenderer::GetCLSID());
 	}
 
 	return false;
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

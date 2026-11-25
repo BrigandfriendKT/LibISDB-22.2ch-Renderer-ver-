@@ -34,21 +34,11 @@ namespace LibISDB
 {
 
 
-void Logger::Log(LogType Type, const CharType *pFormat, ...)
-{
-	std::va_list Args;
-
-	va_start(Args, pFormat);
-	LogV(Type, pFormat, Args);
-	va_end(Args);
-}
-
-
-void Logger::LogV(LogType Type, const CharType *pFormat, std::va_list Args)
+void Logger::LogV(LogType Type, StringView Format, FormatArgs Args)
 {
 	CharType Buffer[MAX_LENGTH];
 
-	StringPrintfV(Buffer, pFormat, Args);
+	StringVFormatArgs(Buffer, std::size(Buffer), GetDefaultLocaleClass(), Format, Args);
 	OnLog(Type, Buffer);
 }
 
@@ -59,4 +49,4 @@ void Logger::LogRaw(LogType Type, const CharType *pText)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

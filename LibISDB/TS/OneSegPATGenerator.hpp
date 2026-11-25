@@ -57,7 +57,7 @@ namespace LibISDB
 		uint8_t m_PMTCount[ONESEG_PMT_PID_COUNT];
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_ONESEG_PAT_GENERATOR_H
+#endif // ifndef LIBISDB_ONESEG_PAT_GENERATOR_H

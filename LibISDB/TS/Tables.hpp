@@ -273,8 +273,8 @@ namespace LibISDB
 			DescriptorBlock Descriptors; /**< 記述子 */
 		};
 
-		static constexpr uint8_t TABLE_ID_PF_ACTUAL = 0x4E_u8;	// p/f actual
-		static constexpr uint8_t TABLE_ID_PF_OTHER  = 0x4F_u8;	// p/f other
+		static constexpr uint8_t TABLE_ID_PF_ACTUAL = 0x4E_u8; // p/f actual
+		static constexpr uint8_t TABLE_ID_PF_OTHER  = 0x4F_u8; // p/f other
 
 		EITTable();
 
@@ -444,8 +444,8 @@ namespace LibISDB
 		static constexpr uint8_t TABLE_ID = 0xC8_u8;
 
 		// データの種類
-		static constexpr uint8_t DATA_TYPE_LOGO    = 0x01_u8;	// ロゴ
-		static constexpr uint8_t DATA_TYPE_INVALID = 0xFF_u8;	// 無効
+		static constexpr uint8_t DATA_TYPE_LOGO    = 0x01_u8; // ロゴ
+		static constexpr uint8_t DATA_TYPE_INVALID = 0xFF_u8; // 無効
 
 		CDTTable();
 
@@ -536,7 +536,7 @@ namespace LibISDB
 		uint64_t m_PCR;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_TABLES_H
+#endif // ifndef LIBISDB_TABLES_H

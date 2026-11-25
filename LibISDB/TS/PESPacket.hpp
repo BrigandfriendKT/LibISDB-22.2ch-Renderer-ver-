@@ -34,7 +34,7 @@
 namespace LibISDB
 {
 
-	constexpr int64_t PTS_CLOCK = 90000_i64;	// 90kHz
+	constexpr int64_t PTS_CLOCK = 90000_i64; // 90kHz
 
 	inline int64_t GetPTS(const uint8_t *p)
 	{
@@ -57,7 +57,7 @@ namespace LibISDB
 		PESPacket(size_t BufferSize);
 
 		bool ParseHeader();
-		void Reset();
+		void Reset() noexcept;
 
 		uint8_t GetStreamID() const noexcept { return m_Header.StreamID; }
 		uint16_t GetPacketLength() const noexcept { return m_Header.PacketLength; }
@@ -84,21 +84,21 @@ namespace LibISDB
 
 	protected:
 		struct PESHeader {
-			uint8_t StreamID;				// Stream ID
-			uint16_t PacketLength;			// PES Packet Length
-			uint8_t ScramblingControl;		// PES Scrambling Control
-			bool Priority;					// PES Priority
-			bool DataAlignmentIndicator;	// Data Alignment Indicator
-			bool Copyright;					// Copyright
-			bool OriginalOrCopy;			// Original or Copy
-			uint8_t PTSDTSFlags;			// PTS DTS Flags
-			bool ESCRFlag;					// ESCR Flag
-			bool ESRateFlag;				// ES Rate Flag
-			bool DSMTrickModeFlag;			// DSM Trick Mode Flag
-			bool AdditionalCopyInfoFlag;	// Additional Copy Info Flag
-			bool CRCFlag;					// PES CRC Flag
-			bool ExtensionFlag;				// PES Extension Flag
-			uint8_t HeaderDataLength;		// PES Header Data Length
+			uint8_t StreamID;            // Stream ID
+			uint16_t PacketLength;       // PES Packet Length
+			uint8_t ScramblingControl;   // PES Scrambling Control
+			bool Priority;               // PES Priority
+			bool DataAlignmentIndicator; // Data Alignment Indicator
+			bool Copyright;              // Copyright
+			bool OriginalOrCopy;         // Original or Copy
+			uint8_t PTSDTSFlags;         // PTS DTS Flags
+			bool ESCRFlag;               // ESCR Flag
+			bool ESRateFlag;             // ES Rate Flag
+			bool DSMTrickModeFlag;       // DSM Trick Mode Flag
+			bool AdditionalCopyInfoFlag; // Additional Copy Info Flag
+			bool CRCFlag;                // PES CRC Flag
+			bool ExtensionFlag;          // PES Extension Flag
+			uint8_t HeaderDataLength;    // PES Header Data Length
 		};
 
 		PESHeader m_Header;
@@ -114,10 +114,10 @@ namespace LibISDB
 			virtual void OnPESPacket(const PESParser *pParser, const PESPacket *pPacket) = 0;
 		};
 
-		PESParser(PacketHandler *pPacketHandler);
+		PESParser(PacketHandler *pPacketHandler) noexcept;
 
 		bool StorePacket(const TSPacket *pPacket);
-		void Reset();
+		void Reset() noexcept;
 
 	protected:
 		virtual void OnPESPacket(const PESPacket *pPacket) const;
@@ -133,7 +133,7 @@ namespace LibISDB
 		size_t m_StoreSize;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_PES_PACKET_H
+#endif // ifndef LIBISDB_PES_PACKET_H

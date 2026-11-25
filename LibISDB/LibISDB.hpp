@@ -32,4 +32,4 @@
 #include "LibISDBConsts.hpp"
 
 
-#endif	// ifndef LIBISDB_H
+#endif // ifndef LIBISDB_H

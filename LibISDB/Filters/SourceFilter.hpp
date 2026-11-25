@@ -43,6 +43,7 @@ namespace LibISDB
 		enum class SourceMode : unsigned int {
 			Push = 0x0001U,
 			Pull = 0x0002U,
+			LIBISDB_ENUM_FLAGS_TRAILER
 		};
 
 		class EventListener
@@ -63,7 +64,7 @@ namespace LibISDB
 		void Finalize() override;
 
 	// SourceFilter
-		virtual bool OpenSource(const CStringView &Name) = 0;
+		virtual bool OpenSource(const String &Name) = 0;
 		virtual bool CloseSource() = 0;
 		virtual bool IsSourceOpen() const = 0;
 
@@ -83,9 +84,7 @@ namespace LibISDB
 		EventListenerList<EventListener> m_EventListenerList;
 	};
 
-	LIBISDB_ENUM_FLAGS(SourceFilter::SourceMode)
-
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_SOURCE_FILTER_H
+#endif // ifndef LIBISDB_SOURCE_FILTER_H

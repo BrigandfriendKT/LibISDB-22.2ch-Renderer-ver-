@@ -52,7 +52,7 @@ namespace LibISDB
 	bool LanguageCodeToText(
 		uint32_t LanguageCode, CharType *pText, size_t MaxText, bool UpperCase = true);
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_TS_INFORMATION_H
+#endif // ifndef LIBISDB_TS_INFORMATION_H

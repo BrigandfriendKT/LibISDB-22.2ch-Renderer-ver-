@@ -166,7 +166,7 @@ namespace LibISDB
 		Iterator m_Current;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_STREAM_DATA_H
+#endif // ifndef LIBISDB_STREAM_DATA_H

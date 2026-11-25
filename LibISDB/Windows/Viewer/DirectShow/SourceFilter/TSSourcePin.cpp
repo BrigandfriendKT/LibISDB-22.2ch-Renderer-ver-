@@ -52,7 +52,7 @@ TSSourcePin::TSSourcePin(HRESULT *phr, TSSourceFilter *pFilter)
 	, m_InputTimeout(false)
 	, m_NewSegment(true)
 {
-	LIBISDB_TRACE(LIBISDB_STR("TSSourcePin::TSSourcePin() %p\n"), this);
+	LIBISDB_TRACE(LIBISDB_STR("TSSourcePin::TSSourcePin() {}\n"), static_cast<void *>(this));
 
 	*phr = S_OK;
 }
@@ -101,7 +101,7 @@ HRESULT TSSourcePin::Active()
 {
 	LIBISDB_TRACE(LIBISDB_STR("TSSourcePin::Active()\n"));
 
-	HRESULT hr = CBaseOutputPin::Active();
+	const HRESULT hr = CBaseOutputPin::Active();
 	if (FAILED(hr))
 		return hr;
 
@@ -125,7 +125,7 @@ HRESULT TSSourcePin::Inactive()
 {
 	LIBISDB_TRACE(LIBISDB_STR("TSSourcePin::Inactive()\n"));
 
-	HRESULT hr = CBaseOutputPin::Inactive();
+	const HRESULT hr = CBaseOutputPin::Inactive();
 
 	StopStreamingThread();
 
@@ -153,7 +153,7 @@ HRESULT TSSourcePin::DecideBufferSize(IMemAllocator *pAlloc, ALLOCATOR_PROPERTIE
 		pRequest->cbBuffer = SAMPLE_BUFFER_SIZE;
 
 	ALLOCATOR_PROPERTIES Actual;
-	HRESULT hr = pAlloc->SetProperties(pRequest, &Actual);
+	const HRESULT hr = pAlloc->SetProperties(pRequest, &Actual);
 	if (FAILED(hr))
 		return hr;
 
@@ -180,7 +180,7 @@ bool TSSourcePin::InputData(DataBuffer *pData)
 			if (!m_SrcStream.IsBufferFull())
 				break;
 			if (static_cast<DWORD>(::GetTickCount() - BeginTime) >= Wait) {
-				LIBISDB_TRACE(LIBISDB_STR("TSSourcePin::InputMedia() : Timeout %u ms\n"), Wait);
+				LIBISDB_TRACE(LIBISDB_STR("TSSourcePin::InputMedia() : Timeout {} ms\n"), Wait);
 				m_InputTimeout = true;
 				return false;
 			}
@@ -299,7 +299,7 @@ bool TSSourcePin::ProcessStream()
 					これも設定できるようにするか、あるいは時間での判定に統一する方がいいかも知れない。
 				*/
 				&& (m_SrcStream.GetPTSDuration() <
-						static_cast<LONGLONG>(m_SrcStream.GetQueueSize() * TS_PACKET_SIZE) * PoolPercentage / (2000000LL * 100LL / 90000LL))) {
+						static_cast<long long>(m_SrcStream.GetQueueSize() * TS_PACKET_SIZE) * PoolPercentage / (2000000LL * 100LL / 90000LL))) {
 			return false;
 		}
 
@@ -310,7 +310,7 @@ bool TSSourcePin::ProcessStream()
 		bool Discontinuity = false;
 
 		if (m_NewSegment.exchange(false, std::memory_order_acq_rel)) {
-			DeliverNewSegment(0, LONGLONG_MAX, 1.0);
+			DeliverNewSegment(0, std::numeric_limits<REFERENCE_TIME>::max(), 1.0);
 			Discontinuity = true;
 		}
 
@@ -320,7 +320,7 @@ bool TSSourcePin::ProcessStream()
 			BYTE *pSampleData = nullptr;
 			hr = pSample->GetPointer(&pSampleData);
 			if (SUCCEEDED(hr)) {
-				size_t Size = m_SrcStream.GetData(pSampleData, SAMPLE_PACKETS);
+				const size_t Size = m_SrcStream.GetData(pSampleData, SAMPLE_PACKETS);
 				if (Size != 0) {
 					pSample->SetActualDataLength(static_cast<long>(Size * TS_PACKET_SIZE));
 					pSample->SetDiscontinuity(Discontinuity);
@@ -337,4 +337,4 @@ bool TSSourcePin::ProcessStream()
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

@@ -67,7 +67,7 @@ namespace LibISDB
 		std::vector<DataBuffer *> m_OutputSequence;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_GRABBER_FILTER_H
+#endif // ifndef LIBISDB_GRABBER_FILTER_H

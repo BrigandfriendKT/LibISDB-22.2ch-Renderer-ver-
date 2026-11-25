@@ -51,4 +51,4 @@ uint32_t GetBCD(const uint8_t *pData, size_t NibbleLength)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

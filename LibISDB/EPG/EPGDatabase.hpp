@@ -81,17 +81,7 @@ namespace LibISDB
 			{
 			}
 
-			bool operator == (const ServiceInfo &rhs) const noexcept
-			{
-				return (NetworkID == rhs.NetworkID)
-					&& (TransportStreamID == rhs.TransportStreamID)
-					&& (ServiceID == rhs.ServiceID);
-			}
-
-			bool operator != (const ServiceInfo &rhs) const noexcept
-			{
-				return !(*this == rhs);
-			}
+			bool operator == (const ServiceInfo &rhs) const noexcept = default;
 
 			bool operator < (const ServiceInfo &rhs) const noexcept
 			{
@@ -133,6 +123,7 @@ namespace LibISDB
 			Database           = 0x0004U,
 			MergeBasicExtended = 0x0008U,
 			SetServiceUpdated  = 0x0010U,
+			LIBISDB_ENUM_FLAGS_TRAILER
 		};
 
 		EPGDatabase() noexcept;
@@ -268,6 +259,12 @@ namespace LibISDB
 		unsigned long long m_CurTOTSeconds;
 		EventListenerList<EventListener> m_EventListenerList;
 
+		const ServiceEventMap * FindServiceEventMap(const ServiceInfo &Info) const;
+		const ServiceEventMap * FindServiceEventMap(
+			uint16_t NetworkID, uint16_t TransportStreamID, uint16_t ServiceID) const
+		{
+			return FindServiceEventMap(ServiceInfo(NetworkID, TransportStreamID, ServiceID));
+		}
 		bool MergeEventMap(
 			const ServiceInfo &Info, ServiceEventMap &Map,
 			MergeFlag Flags = MergeFlag::None,
@@ -285,9 +282,7 @@ namespace LibISDB
 		static bool RemoveEvent(EventMapType &Map, uint16_t EventID);
 	};
 
-	LIBISDB_ENUM_FLAGS(EPGDatabase::MergeFlag)
-
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_EPG_DATABASE_H
+#endif // ifndef LIBISDB_EPG_DATABASE_H

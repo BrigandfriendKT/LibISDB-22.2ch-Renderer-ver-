@@ -208,7 +208,7 @@ namespace LibISDB::DirectShow
 		COMPointer<IMFMediaType> m_MediaType;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_EVR_PRESENTER_H
+#endif // ifndef LIBISDB_EVR_PRESENTER_H

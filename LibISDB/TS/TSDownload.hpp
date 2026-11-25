@@ -144,7 +144,7 @@ namespace LibISDB
 		EventHandler *m_pEventHandler;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_TS_DOWNLOAD_H
+#endif // ifndef LIBISDB_TS_DOWNLOAD_H

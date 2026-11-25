@@ -128,7 +128,7 @@ namespace LibISDB::DirectShow
 
 	RECT MapRect(const RECT &Rect, LONG XNum, LONG XDenom, LONG YNum, LONG YDenom);
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_DIRECTSHOW_UTILITIES_H
+#endif // ifndef LIBISDB_DIRECTSHOW_UTILITIES_H

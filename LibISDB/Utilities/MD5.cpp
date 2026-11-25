@@ -42,14 +42,14 @@ constexpr uint32_t F3(uint32_t x, uint32_t y, uint32_t z) { return x ^ y ^ z; }
 constexpr uint32_t F4(uint32_t x, uint32_t y, uint32_t z) { return y ^ (x | ~z); }
 
 template<typename TFunc> LIBISDB_FORCE_INLINE void MD5Step(
-	TFunc func, uint32_t &w, uint32_t x, uint32_t y, uint32_t z, uint32_t data, int shift)
+	TFunc func, uint32_t &w, uint32_t x, uint32_t y, uint32_t z, uint32_t data, int shift) noexcept
 {
 	w += func(x, y, z) + data;
 	w = RotateLeft32(w, shift);
 	w += x;
 }
 
-void MD5Transform(uint32_t MD5[4], const uint32_t *p)
+void MD5Transform(uint32_t (&MD5)[4], const uint32_t *p) noexcept
 {
 	uint32_t a, b, c, d;
 
@@ -139,7 +139,7 @@ MD5Value CalcMD5(const uint8_t *pData, size_t DataSize) noexcept
 {
 	const uint8_t *pSrc = pData;
 	MD5Value MD5;
-	const uint64_t BitsSize = (uint64_t)DataSize << 3;
+	const uint64_t BitsSize = static_cast<uint64_t>(DataSize) << 3;
 	uint32_t BlockData[16];
 
 	MD5.Value32[0] = 0x67452301_u32;
@@ -177,4 +177,4 @@ MD5Value CalcMD5(const uint8_t *pData, size_t DataSize) noexcept
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

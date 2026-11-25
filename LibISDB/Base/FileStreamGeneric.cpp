@@ -34,18 +34,13 @@ namespace LibISDB
 {
 
 
-FileStreamGeneric::FileStreamGeneric()
-{
-}
-
-
 FileStreamGeneric::~FileStreamGeneric()
 {
 	Close();
 }
 
 
-bool FileStreamGeneric::Open(const CStringView &FileName, OpenFlag Flags)
+bool FileStreamGeneric::Open(const String &FileName, OpenFlag Flags)
 {
 	if (m_Stream.is_open()) {
 		SetError(std::errc::operation_in_progress);
@@ -69,8 +64,8 @@ bool FileStreamGeneric::Open(const CStringView &FileName, OpenFlag Flags)
 		Mode |= std::ios_base::trunc;
 
 	LIBISDB_TRACE(
-		LIBISDB_STR("FileStreamGeneric::Open() : Open file \"%") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("\"\n"),
-		FileName.c_str());
+		LIBISDB_STR("FileStreamGeneric::Open() : Open file \"{}\"\n"),
+		FileName);
 	m_Stream.exceptions(std::ios_base::failbit);
 	try {
 		m_Stream.open(FileName.c_str(), Mode);
@@ -213,4 +208,4 @@ bool FileStreamGeneric::IsEnd() const
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

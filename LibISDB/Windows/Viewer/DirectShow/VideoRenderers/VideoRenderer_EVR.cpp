@@ -175,9 +175,9 @@ bool VideoRenderer_EVR::Initialize(
 			DXVA2_VideoProcessorCaps Caps;
 
 			if (SUCCEEDED(pVideoProcessor->GetVideoProcessorCaps(&pProcessingModes[i], &Caps))) {
-				LIBISDB_TRACE(LIBISDB_STR("EVR Video Processor %u\n"), i);
+				LIBISDB_TRACE(LIBISDB_STR("EVR Video Processor {}\n"), i);
 				LIBISDB_TRACE(
-					LIBISDB_STR("DeviceCaps : %") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("\n"),
+					LIBISDB_STR("DeviceCaps : {}\n"),
 					Caps.DeviceCaps == DXVA2_VPDev_EmulatedDXVA1 ?
 						LIBISDB_STR("DXVA2_VPDev_EmulatedDXVA1"):
 					Caps.DeviceCaps == DXVA2_VPDev_HardwareDevice ?
@@ -269,10 +269,10 @@ bool VideoRenderer_EVR::SetVideoPosition(
 			MFVideoNormalizedRect rcSrc;
 			RECT rcDest;
 
-			rcSrc.left   = (float)SourceRect.left   / (float)SourceWidth;
-			rcSrc.top    = (float)SourceRect.top    / (float)SourceHeight;
-			rcSrc.right  = (float)SourceRect.right  / (float)SourceWidth;
-			rcSrc.bottom = (float)SourceRect.bottom / (float)SourceHeight;
+			rcSrc.left   = static_cast<float>(SourceRect.left)   / static_cast<float>(SourceWidth);
+			rcSrc.top    = static_cast<float>(SourceRect.top)    / static_cast<float>(SourceHeight);
+			rcSrc.right  = static_cast<float>(SourceRect.right)  / static_cast<float>(SourceWidth);
+			rcSrc.bottom = static_cast<float>(SourceRect.bottom) / static_cast<float>(SourceHeight);
 			rcDest = DestRect;
 			::OffsetRect(&rcDest, WindowRect.left, WindowRect.top);
 #ifdef LIBISDB_EVR_USE_VIDEO_WINDOW
@@ -372,19 +372,7 @@ COMMemoryPointer<> VideoRenderer_EVR::GetCurrentImage()
 bool VideoRenderer_EVR::ShowCursor(bool Show)
 {
 #ifdef LIBISDB_EVR_USE_VIDEO_WINDOW
-	if (m_ShowCursor != Show) {
-		if (m_hwndVideo != nullptr) {
-			POINT pt;
-			RECT rc;
-
-			::GetCursorPos(&pt);
-			::GetWindowRect(m_hwndVideo, &rc);
-			if (::PtInRect(&rc, pt))
-				::SetCursor(Show ? ::LoadCursor(nullptr, IDC_ARROW) : nullptr);
-		}
-
-		m_ShowCursor = Show;
-	}
+	m_ShowCursor = Show;
 #endif
 
 	return true;
@@ -467,9 +455,7 @@ HRESULT VideoRenderer_EVR::UpdateRenderingPrefs(IMFVideoDisplayControl *pDisplay
 	DWORD RenderingPrefs;
 	HRESULT hr = pDisplayControl->GetRenderingPrefs(&RenderingPrefs);
 	if (SUCCEEDED(hr)) {
-		LIBISDB_TRACE(
-			LIBISDB_STR("ClipToDevice = %") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("\n"),
-			m_ClipToDevice ? LIBISDB_STR("true") : LIBISDB_STR("false"));
+		LIBISDB_TRACE(LIBISDB_STR("ClipToDevice = {}\n"), m_ClipToDevice);
 		if (!m_ClipToDevice)
 			RenderingPrefs |= MFVideoRenderPrefs_DoNotClipToDevice;
 		else
@@ -592,7 +578,7 @@ LRESULT CALLBACK VideoRenderer_EVR::VideoWndProc(HWND hwnd, UINT uMsg, WPARAM wP
 }
 
 
-#endif	// LIBISDB_EVR_USE_VIDEO_WINDOW
+#endif // LIBISDB_EVR_USE_VIDEO_WINDOW
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

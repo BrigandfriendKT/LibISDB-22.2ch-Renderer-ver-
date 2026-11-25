@@ -51,7 +51,7 @@ namespace LibISDB
 		DataStorage * CreateDataStorage() override;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_DATA_STORAGE_MANAGER_H
+#endif // ifndef LIBISDB_DATA_STORAGE_MANAGER_H

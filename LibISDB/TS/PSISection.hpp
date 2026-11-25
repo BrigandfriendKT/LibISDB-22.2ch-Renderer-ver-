@@ -43,13 +43,12 @@ namespace LibISDB
 		PSISection(size_t BufferSize);
 
 		bool operator == (const PSISection &rhs) const noexcept;
-		bool operator != (const PSISection &rhs) const noexcept { return !(*this == rhs); }
 
 		bool ParseHeader(bool IsExtended = true, bool IgnoreSectionNumber = false);
-		void Reset();
+		void Reset() noexcept;
 
-		const uint8_t * GetPayloadData() const;
-		uint16_t GetPayloadSize() const;
+		const uint8_t * GetPayloadData() const noexcept;
+		uint16_t GetPayloadSize() const noexcept;
 
 		uint8_t GetTableID() const noexcept { return m_Header.TableID; }
 		bool IsExtendedSection() const noexcept { return m_Header.SectionSyntaxIndicator; }
@@ -74,7 +73,6 @@ namespace LibISDB
 			uint8_t LastSectionNumber;
 
 			bool operator == (const PSIHeader &rhs) const noexcept;
-			bool operator != (const PSIHeader &rhs) const noexcept { return !(*this == rhs); }
 		};
 
 		PSIHeader m_Header;
@@ -95,10 +93,10 @@ namespace LibISDB
 		PSISectionParser(PSISectionHandler *pSectionHandler, bool IsExtended = true, bool IgnoreSectionNumber = false);
 
 		void StorePacket(const TSPacket *pPacket);
-		void Reset();
+		void Reset() noexcept;
 		void SetPSISectionHandler(PSISectionHandler *pSectionHandler);
 
-		unsigned long GetCRCErrorCount() const;
+		unsigned long GetCRCErrorCount() const noexcept;
 
 	private:
 		bool StoreHeader(const uint8_t *pData, uint8_t *pRemain);
@@ -114,7 +112,7 @@ namespace LibISDB
 		unsigned long m_CRCErrorCount;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_SPI_SECTION_H
+#endif // ifndef LIBISDB_SPI_SECTION_H

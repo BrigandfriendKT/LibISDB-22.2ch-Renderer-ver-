@@ -35,10 +35,13 @@
 #endif
 #include <crtdbg.h>
 #define LIBISDB_DEBUG_NEW ::new(_NORMAL_BLOCK, __FILE__, __LINE__)
-#else	// _MSC_VER
+#else // _MSC_VER
 #include <cassert>
-#endif	// !def _MSC_VER
-#endif	// LIBISDB_DEBUG
+#endif // !def _MSC_VER
+#endif // LIBISDB_DEBUG
+
+#include <format>
+#include <source_location>
 
 
 namespace LibISDB
@@ -53,8 +56,16 @@ namespace LibISDB
 		Error,
 	};
 
-	void DebugTrace(TraceType Type, const CharType *pFormat, ...);
-	void DebugTraceV(TraceType Type, const CharType *pFormat, std::va_list Args);
+	void DebugTraceV(TraceType Type, std::string_view Format, std::format_args Args);
+	void DebugTraceV(TraceType Type, std::wstring_view Format, std::wformat_args Args);
+	template<typename... TArgs> void DebugTrace(TraceType Type, std::string_view Format, TArgs&&... Args)
+	{
+		DebugTraceV(Type, Format, std::make_format_args(Args...));
+	}
+	template<typename... TArgs> void DebugTrace(TraceType Type, std::wstring_view Format, TArgs&&... Args)
+	{
+		DebugTraceV(Type, Format, std::make_wformat_args(Args...));
+	}
 
 #if !defined(LIBISDB_ENABLE_TRACE) && !defined(LIBISDB_NO_TRACE) && defined(LIBISDB_DEBUG)
 #define LIBISDB_ENABLE_TRACE
@@ -75,19 +86,21 @@ namespace LibISDB
 #define LIBISDB_TRACE_WARNING(...) LIBISDB_TRACE_(LibISDB::TraceType::Warning, __VA_ARGS__)
 #define LIBISDB_TRACE_ERROR(...)   LIBISDB_TRACE_(LibISDB::TraceType::Error, __VA_ARGS__)
 
-	bool TraceIf(TraceType Type, bool Condition, const char *pExpression, const char *pFile, int Line);
+	bool TraceIf(
+		TraceType Type, bool Condition, const char *pExpression,
+		const std::source_location &Location = std::source_location::current());
 
 #ifdef LIBISDB_ENABLE_TRACE
 #define LIBISDB_TRACE_IF(Type, Condition) \
-	LibISDB::TraceIf(Type, Condition, #Condition, __FILE__, __LINE__)
+	LibISDB::TraceIf(Type, Condition, #Condition)
 #define LIBISDB_TRACE_WARNING_IF(Condition) \
-	LibISDB::TraceIf(LibISDB::TraceType::Warning, Condition, #Condition, __FILE__, __LINE__)
+	LibISDB::TraceIf(LibISDB::TraceType::Warning, Condition, #Condition)
 #define LIBISDB_TRACE_WARNING_IF_NOT(Condition) \
-	(!LibISDB::TraceIf(LibISDB::TraceType::Warning, !(Condition), "!(" #Condition ")", __FILE__, __LINE__))
+	(!LibISDB::TraceIf(LibISDB::TraceType::Warning, !(Condition), "!(" #Condition ")"))
 #define LIBISDB_TRACE_ERROR_IF(Condition) \
-	LibISDB::TraceIf(LibISDB::TraceType::Error, Condition, #Condition, __FILE__, __LINE__)
+	LibISDB::TraceIf(LibISDB::TraceType::Error, Condition, #Condition)
 #define LIBISDB_TRACE_ERROR_IF_NOT(Condition) \
-	(!LibISDB::TraceIf(LibISDB::TraceType::Error, !(Condition), "!(" #Condition ")", __FILE__, __LINE__))
+	(!LibISDB::TraceIf(LibISDB::TraceType::Error, !(Condition), "!(" #Condition ")"))
 #else
 #define LIBISDB_TRACE_IF(Condition)             (Condition)
 #define LIBISDB_TRACE_WARNING_IF(Condition)     (Condition)
@@ -96,7 +109,7 @@ namespace LibISDB
 #define LIBISDB_TRACE_ERROR_IF_NOT(Condition)   (Condition)
 #endif
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_DEBUG_H
+#endif // ifndef LIBISDB_DEBUG_H

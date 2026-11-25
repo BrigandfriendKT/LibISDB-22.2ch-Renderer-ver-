@@ -35,7 +35,7 @@ namespace LibISDB
 	[[nodiscard]] void * AlignedRealloc(void *pBuffer, size_t Size, size_t Align, size_t Offset = 0) noexcept;
 	void AlignedFree(void *pBuffer) noexcept;
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_ALIGNED_ALLOC_H
+#endif // ifndef LIBISDB_ALIGNED_ALLOC_H

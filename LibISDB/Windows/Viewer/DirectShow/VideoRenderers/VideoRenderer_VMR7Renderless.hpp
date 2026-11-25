@@ -111,7 +111,7 @@ namespace LibISDB::DirectShow
 		int m_Duration;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_VIDEO_RENDERER_VMR7_RENDERLESS_H
+#endif // ifndef LIBISDB_VIDEO_RENDERER_VMR7_RENDERLESS_H

@@ -40,7 +40,7 @@ TSSourceFilter::TSSourceFilter(LPUNKNOWN pUnk, HRESULT *phr)
 	, m_pSrcPin(nullptr)
 	, m_OutputWhenPaused(false)
 {
-	LIBISDB_TRACE(LIBISDB_STR("TSSourceFilter::TSSourceFilter %p\n"), this);
+	LIBISDB_TRACE(LIBISDB_STR("TSSourceFilter::TSSourceFilter {}\n"), static_cast<void *>(this));
 
 	// ピンのインスタンス生成
 	m_pSrcPin = new TSSourcePin(phr, this);
@@ -236,4 +236,4 @@ bool TSSourceFilter::MapAudioPID(uint16_t AudioPID, uint16_t MapPID)
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

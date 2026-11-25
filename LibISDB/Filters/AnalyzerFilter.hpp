@@ -64,6 +64,7 @@ namespace LibISDB
 			virtual void OnPMTUpdated(AnalyzerFilter *pAnalyzer, uint16_t ServiceID) {}
 			virtual void OnSDTUpdated(AnalyzerFilter *pAnalyzer) {}
 			virtual void OnNITUpdated(AnalyzerFilter *pAnalyzer) {}
+			virtual void OnBITUpdated(AnalyzerFilter *pAnalyzer) {}
 			virtual void OnEITUpdated(AnalyzerFilter *pAnalyzer) {}
 			virtual void OnCATUpdated(AnalyzerFilter *pAnalyzer) {}
 			virtual void OnTOTUpdated(AnalyzerFilter *pAnalyzer) {}
@@ -172,6 +173,28 @@ namespace LibISDB
 		typedef std::vector<SatelliteDeliverySystemInfo> SatelliteDeliverySystemList;
 		typedef std::vector<TerrestrialDeliverySystemInfo> TerrestrialDeliverySystemList;
 		typedef std::vector<CableDeliverySystemInfo> CableDeliverySystemList;
+
+		struct SIParameterInfo {
+			uint8_t ParameterVersion;
+			DateTime UpdateTime;
+			std::vector<SIParameterDescriptor::TableInfo> TableList;
+		};
+
+		struct BITBroadcasterInfo {
+			uint8_t BroadcasterID;
+			uint8_t BroadcasterType;
+			String BroadcasterName;
+			ExtendedBroadcasterDescriptor::TerrestrialBroadcasterInfo TerrestrialBroadcasterInfo{};
+			std::vector<ServiceListDescriptor::ServiceInfo> ServiceList;
+		};
+
+		struct BITNetworkInfo {
+			uint16_t OriginalNetworkID;
+			std::vector<SIParameterInfo> SIParameterList;
+			std::vector<BITBroadcasterInfo> BroadcasterList;
+		};
+
+		typedef std::vector<BITNetworkInfo> BITNetworkList;
 
 		typedef std::vector<uint16_t> EMMPIDList;
 
@@ -296,7 +319,7 @@ namespace LibISDB
 		bool GetEventComponentGroupInfo(int ServiceIndex, int GroupIndex, ReturnArg<EventComponentGroupInfo> Info, bool Next = false) const;
 		bool GetEventComponentGroupList(int ServiceIndex, ReturnArg<EventComponentGroupList> List, bool Next = false) const;
 		int GetEventComponentGroupIndexByComponentTag(int ServiceIndex, uint8_t ComponentTag, bool Next = false) const;
-#endif	// LIBISDB_ANALYZER_FILTER_EIT_SUPPORT
+#endif // LIBISDB_ANALYZER_FILTER_EIT_SUPPORT
 
 		bool GetTOTTime(ReturnArg<DateTime> Time) const;
 		bool GetInterpolatedTOTTime(ReturnArg<DateTime> Time, OptionalReturnArg<bool> Interpolated = std::nullopt) const;
@@ -304,6 +327,8 @@ namespace LibISDB
 		bool GetSatelliteDeliverySystemList(ReturnArg<SatelliteDeliverySystemList> List) const;
 		bool GetTerrestrialDeliverySystemList(ReturnArg<TerrestrialDeliverySystemList> List) const;
 		bool GetCableDeliverySystemList(ReturnArg<CableDeliverySystemList> List) const;
+
+		bool GetBITNetworkList(ReturnArg<BITNetworkList> List) const;
 
 		bool GetEMMPIDList(ReturnArg<EMMPIDList> List) const;
 
@@ -374,6 +399,7 @@ namespace LibISDB
 		void OnPMTSection(const PSITableBase *pTable, const PSISection *pSection);
 		void OnSDTSection(const PSITableBase *pTable, const PSISection *pSection);
 		void OnNITSection(const PSITableBase *pTable, const PSISection *pSection);
+		void OnBITSection(const PSITableBase *pTable, const PSISection *pSection);
 #ifdef LIBISDB_ANALYZER_FILTER_EIT_SUPPORT
 		void OnEITSection(const PSITableBase *pTable, const PSISection *pSection);
 #endif
@@ -381,7 +407,7 @@ namespace LibISDB
 		void OnTOTSection(const PSITableBase *pTable, const PSISection *pSection);
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_ANALYZER_FILTER_H
+#endif // ifndef LIBISDB_ANALYZER_FILTER_H

@@ -258,4 +258,4 @@ bool FileDataStorage::SetFileName(const StringView &FileName)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

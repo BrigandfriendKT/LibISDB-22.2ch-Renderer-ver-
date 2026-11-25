@@ -70,7 +70,7 @@ namespace LibISDB
 #endif
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_THREAD_H
+#endif // ifndef LIBISDB_THREAD_H

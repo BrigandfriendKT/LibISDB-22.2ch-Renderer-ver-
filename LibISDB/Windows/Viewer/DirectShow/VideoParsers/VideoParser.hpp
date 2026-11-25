@@ -46,16 +46,7 @@ namespace LibISDB::DirectShow
 				int Num = 0;
 				int Denom = 0;
 
-				bool operator == (const Rational &rhs) const noexcept
-				{
-					return (Num == rhs.Num)
-						&& (Denom == rhs.Denom);
-				}
-
-				bool operator != (const Rational &rhs) const noexcept
-				{
-					return !(*this == rhs);
-				}
+				bool operator == (const Rational &rhs) const noexcept = default;
 			};
 
 			int OriginalWidth = 0;
@@ -84,23 +75,7 @@ namespace LibISDB::DirectShow
 			{
 			}
 
-			bool operator == (const VideoInfo &rhs) const noexcept
-			{
-				return (OriginalWidth == rhs.OriginalWidth)
-					&& (OriginalHeight == rhs.OriginalHeight)
-					&& (DisplayWidth == rhs.DisplayWidth)
-					&& (DisplayHeight == rhs.DisplayHeight)
-					&& (DisplayPosX == rhs.DisplayPosX)
-					&& (DisplayPosY == rhs.DisplayPosY)
-					&& (AspectRatioX == rhs.AspectRatioX)
-					&& (AspectRatioY == rhs.AspectRatioY)
-					&& (FrameRate == rhs.FrameRate);
-			}
-
-			bool operator != (const VideoInfo &rhs) const noexcept
-			{
-				return !(*this == rhs);
-			}
+			bool operator == (const VideoInfo &rhs) const noexcept = default;
 
 			void Reset() noexcept
 			{
@@ -126,6 +101,7 @@ namespace LibISDB::DirectShow
 			Time      = 0x0001U,
 			FrameRate = 0x0002U,
 			OneSeg    = 0x0004U,
+			LIBISDB_ENUM_FLAGS_TRAILER
 		};
 
 		VideoParser() noexcept;
@@ -155,9 +131,7 @@ namespace LibISDB::DirectShow
 		bool m_AttachMediaType;
 	};
 
-	LIBISDB_ENUM_FLAGS(VideoParser::AdjustSampleFlag)
-
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_VIDEO_PARSER_H
+#endif // ifndef LIBISDB_VIDEO_PARSER_H

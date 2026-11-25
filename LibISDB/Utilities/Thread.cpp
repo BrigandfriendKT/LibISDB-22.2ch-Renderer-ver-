@@ -106,7 +106,7 @@ bool Thread::Wait(const std::chrono::milliseconds &Timeout) const
 	if (m_hThread == nullptr)
 		return false;
 
-	DWORD Wait = static_cast<DWORD>(std::min(Timeout.count(), static_cast<std::chrono::milliseconds::rep>(0xFFFFFFFEUL)));
+	const DWORD Wait = static_cast<DWORD>(std::min(Timeout.count(), static_cast<std::chrono::milliseconds::rep>(0xFFFFFFFEUL)));
 
 	return ::WaitForSingleObject(m_hThread, Wait) == WAIT_OBJECT_0;
 }
@@ -144,7 +144,7 @@ void Thread::SetThreadName(const CharType *pName)
 	// https://msdn.microsoft.com/en-us/library/xcb2z8hs(VS.90).aspx
 
 	if (::IsDebuggerPresent()) {
-		static const DWORD MS_VC_EXCEPTION = 0x406D1388;
+		constexpr DWORD MS_VC_EXCEPTION = 0x406D1388;
 
 #pragma pack(push, 8)
 		typedef struct tagTHREADNAME_INFO
@@ -180,7 +180,7 @@ void Thread::SetThreadName(const CharType *pName)
 }
 
 
-#else	// LIBISDB_WINDOWS
+#else // LIBISDB_WINDOWS
 
 
 bool Thread::Start()
@@ -243,7 +243,7 @@ void Thread::SetThreadName(const CharType *pName)
 }
 
 
-#endif	// ndef LIBISDB_WINDOWS
+#endif // ndef LIBISDB_WINDOWS
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

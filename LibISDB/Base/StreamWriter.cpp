@@ -45,7 +45,7 @@ FileStreamWriter::~FileStreamWriter()
 }
 
 
-bool FileStreamWriter::Open(const CStringView &FileName, OpenFlag Flags)
+bool FileStreamWriter::Open(const String &FileName, OpenFlag Flags)
 {
 	if (m_File)
 		return false;
@@ -63,7 +63,7 @@ bool FileStreamWriter::Open(const CStringView &FileName, OpenFlag Flags)
 }
 
 
-bool FileStreamWriter::Reopen(const CStringView &FileName, OpenFlag Flags)
+bool FileStreamWriter::Reopen(const String &FileName, OpenFlag Flags)
 {
 	FileStream *pFile = OpenFile(FileName, Flags);
 
@@ -99,7 +99,7 @@ size_t FileStreamWriter::Write(const void *pBuffer, size_t Size)
 		return 0;
 	}
 
-	size_t Write = m_File->Write(pBuffer, Size);
+	const size_t Write = m_File->Write(pBuffer, Size);
 
 	m_WriteSize += Write;
 
@@ -144,7 +144,7 @@ bool FileStreamWriter::SetPreallocationUnit(SizeType PreallocationUnit)
 }
 
 
-FileStream * FileStreamWriter::OpenFile(const CStringView &FileName, OpenFlag Flags)
+FileStream * FileStreamWriter::OpenFile(const String &FileName, OpenFlag Flags)
 {
 	FileStream *pFile = new FileStream;
 	FileStream::OpenFlag StreamFlags = FileStream::OpenFlag::Write | FileStream::OpenFlag::ShareRead;
@@ -163,4 +163,4 @@ FileStream * FileStreamWriter::OpenFile(const CStringView &FileName, OpenFlag Fl
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

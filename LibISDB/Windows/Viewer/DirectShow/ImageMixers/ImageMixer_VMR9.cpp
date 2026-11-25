@@ -138,4 +138,4 @@ bool ImageMixer_VMR9::GetMapSize(ReturnArg<int> Width, ReturnArg<int> Height)
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

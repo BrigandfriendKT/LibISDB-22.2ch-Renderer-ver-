@@ -72,4 +72,4 @@ HRESULT VideoRenderer_EVRCustomPresenter::InitializePresenter(IBaseFilter *pFilt
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

@@ -54,7 +54,7 @@ namespace LibISDB
 		std::atomic<bool> m_IsSourceEnd {false};
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_STREAM_SOURCE_ENGINE_H
+#endif // ifndef LIBISDB_STREAM_SOURCE_ENGINE_H

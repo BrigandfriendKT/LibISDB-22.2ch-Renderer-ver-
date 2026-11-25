@@ -133,7 +133,7 @@ namespace LibISDB
 		TSPacket m_PATPacket;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_TS_PACKET_PARSER_FILTER_H
+#endif // ifndef LIBISDB_TS_PACKET_PARSER_FILTER_H

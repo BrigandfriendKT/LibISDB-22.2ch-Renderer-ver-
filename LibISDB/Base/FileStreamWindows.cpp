@@ -40,7 +40,7 @@ namespace LibISDB
 {
 
 
-FileStreamWindows::FileStreamWindows()
+FileStreamWindows::FileStreamWindows() noexcept
 	: m_hFile(INVALID_HANDLE_VALUE)
 
 	, m_PreallocationUnit(0)
@@ -56,7 +56,7 @@ FileStreamWindows::~FileStreamWindows()
 }
 
 
-bool FileStreamWindows::Open(const CStringView &FileName, OpenFlag Flags)
+bool FileStreamWindows::Open(const String &FileName, OpenFlag Flags)
 {
 	if (m_hFile != INVALID_HANDLE_VALUE) {
 		SetError(std::errc::operation_in_progress);
@@ -117,7 +117,7 @@ bool FileStreamWindows::Open(const CStringView &FileName, OpenFlag Flags)
 
 	// ファイルを開く
 	LIBISDB_TRACE(
-		LIBISDB_STR("FileStreamWindows::Open() : Open file \"%") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR("\"\n"),
+		LIBISDB_STR("FileStreamWindows::Open() : Open file \"{}\"\n"),
 		!Path.empty() ? Path.c_str() : FileName.c_str());
 	m_hFile = ::CreateFile(
 		!Path.empty() ? Path.c_str() : FileName.c_str(),
@@ -134,9 +134,11 @@ bool FileStreamWindows::Open(const CStringView &FileName, OpenFlag Flags)
 	if (!!(Flags & (OpenFlag::PriorityLow | OpenFlag::PriorityIdle))) {
 		alignas(8) FILE_IO_PRIORITY_HINT_INFO PriorityHint;
 		PriorityHint.PriorityHint = !!(Flags & OpenFlag::PriorityIdle) ? IoPriorityHintVeryLow : IoPriorityHintLow;
-		LIBISDB_TRACE(LIBISDB_STR("Set file I/O priority hint %d\n"), static_cast<int>(PriorityHint.PriorityHint));
+		LIBISDB_TRACE(
+			LIBISDB_STR("Set file I/O priority hint {}\n"),
+			static_cast<std::underlying_type_t<PRIORITY_HINT>>(PriorityHint.PriorityHint));
 		if (!::SetFileInformationByHandle(m_hFile, FileIoPriorityHintInfo, &PriorityHint, sizeof(PriorityHint))) {
-			LIBISDB_TRACE(LIBISDB_STR("Failed (Error %#x)\n"), ::GetLastError());
+			LIBISDB_TRACE(LIBISDB_STR("Failed (Error {:#x})\n"), ::GetLastError());
 		}
 	}
 
@@ -229,16 +231,16 @@ size_t FileStreamWindows::Write(const void *pBuff, size_t Size)
 		if (::SetFilePointerEx(m_hFile, LARGE_INTEGER{0, 0}, &CurPos, FILE_CURRENT)
 				&& ::GetFileSizeEx(m_hFile, &FileSize)
 				&& CurPos.QuadPart + static_cast<LONGLONG>(Size) > FileSize.QuadPart) {
-			LONGLONG ExtendSize = RoundUp(static_cast<LONGLONG>(Size), static_cast<LONGLONG>(m_PreallocationUnit));
+			const LONGLONG ExtendSize = RoundUp(static_cast<LONGLONG>(Size), static_cast<LONGLONG>(m_PreallocationUnit));
 			LIBISDB_TRACE(
-				LIBISDB_STR("Preallocate file: %lld + %lld bytes (%") LIBISDB_STR(LIBISDB_PRIS) LIBISDB_STR(")\n"),
-				FileSize.QuadPart, ExtendSize, m_FileName.c_str());
+				LIBISDB_STR("Preallocate file: {} + {} bytes ({})\n"),
+				FileSize.QuadPart, ExtendSize, m_FileName);
 			FileSize.QuadPart += ExtendSize;
 			if (::SetFilePointerEx(m_hFile, FileSize, nullptr, FILE_BEGIN)) {
 				if (::SetEndOfFile(m_hFile)) {
 					m_PreallocatedSize = FileSize.QuadPart;
 				} else {
-					LIBISDB_TRACE(LIBISDB_STR("SetEndOfFile() failed (Error %#x)\n"), ::GetLastError());
+					LIBISDB_TRACE(LIBISDB_STR("SetEndOfFile() failed (Error {:#x})\n"), ::GetLastError());
 					m_IsPreallocationFailed = true;
 				}
 				::SetFilePointerEx(m_hFile, CurPos, nullptr, FILE_BEGIN);
@@ -385,7 +387,7 @@ bool FileStreamWindows::Preallocate(SizeType Size)
 		return false;
 	}
 
-	if ((SizeType)FileSize.QuadPart >= Size) {
+	if (static_cast<SizeType>(FileSize.QuadPart) >= Size) {
 		SetError(std::errc::invalid_argument);
 		return false;
 	}
@@ -458,7 +460,7 @@ bool FileStreamWindows::GetTime(FILETIME *pCreationTime, FILETIME *pLastAccessTi
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// LIBISDB_WINDOWS
+#endif // LIBISDB_WINDOWS

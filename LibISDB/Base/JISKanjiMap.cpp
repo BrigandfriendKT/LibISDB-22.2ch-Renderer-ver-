@@ -2098,4 +2098,4 @@ size_t JISX0213KanjiToUTF8(int Plane, uint16_t Code, char *pUTF8, size_t Length)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

@@ -50,7 +50,6 @@ namespace LibISDB
 		DataBuffer & operator = (DataBuffer &&Src) noexcept;
 
 		bool operator == (const DataBuffer &rhs) const noexcept;
-		bool operator != (const DataBuffer &rhs) const noexcept { return !(*this == rhs); }
 
 		uint8_t * GetData() noexcept;
 		const uint8_t * GetData() const noexcept;
@@ -99,7 +98,7 @@ namespace LibISDB
 		unsigned long m_TypeID = TypeID;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_DATA_BUFFER_H
+#endif // ifndef LIBISDB_DATA_BUFFER_H

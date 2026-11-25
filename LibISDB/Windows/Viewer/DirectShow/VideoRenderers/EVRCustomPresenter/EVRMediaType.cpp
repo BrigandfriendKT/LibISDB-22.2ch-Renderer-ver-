@@ -47,7 +47,7 @@ HRESULT GetFrameRate(IMFMediaType *pType, MFRatio *pRatio)
 HRESULT GetVideoDisplayArea(IMFMediaType *pType, MFVideoArea *pArea)
 {
 	HRESULT hr = S_OK;
-	bool PanScan = ::MFGetAttributeUINT32(pType, MF_MT_PAN_SCAN_ENABLED, FALSE) != FALSE;
+	const bool PanScan = ::MFGetAttributeUINT32(pType, MF_MT_PAN_SCAN_ENABLED, FALSE) != FALSE;
 
 	if (PanScan) {
 		hr = pType->GetBlob(MF_MT_PAN_SCAN_APERTURE, reinterpret_cast<UINT8 *>(pArea), sizeof(MFVideoArea), nullptr);
@@ -79,7 +79,7 @@ HRESULT GetDefaultStride(IMFMediaType *pType, LONG *pStride)
 	HRESULT hr;
 	LONG Stride = 0;
 
-	hr = pType->GetUINT32(MF_MT_DEFAULT_STRIDE, (UINT32*)&Stride);
+	hr = pType->GetUINT32(MF_MT_DEFAULT_STRIDE, reinterpret_cast<UINT32*>(&Stride));
 
 	if (FAILED(hr)) {
 		GUID Subtype = GUID_NULL;
@@ -109,4 +109,4 @@ HRESULT GetDefaultStride(IMFMediaType *pType, LONG *pStride)
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

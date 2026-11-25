@@ -43,10 +43,10 @@ namespace LibISDB
 		: public DescriptorTemplate<CADescriptor, 0x09>
 	{
 	public:
-		CADescriptor();
+		CADescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// CADescriptor
 		uint16_t GetCASystemID() const noexcept { return m_CASystemID; }
@@ -67,7 +67,7 @@ namespace LibISDB
 	{
 	public:
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// NetworkNameDescriptor
 		bool GetNetworkName(ReturnArg<ARIBString> Name) const;
@@ -90,7 +90,7 @@ namespace LibISDB
 		};
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// ServiceListDescriptor
 		int GetServiceCount() const;
@@ -109,10 +109,10 @@ namespace LibISDB
 		: public DescriptorTemplate<SatelliteDeliverySystemDescriptor, 0x43>
 	{
 	public:
-		SatelliteDeliverySystemDescriptor();
+		SatelliteDeliverySystemDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// SatelliteDeliverySystemDescriptor
 		uint32_t GetFrequency() const noexcept { return m_Frequency; }
@@ -140,10 +140,10 @@ namespace LibISDB
 		: public DescriptorTemplate<CableDeliverySystemDescriptor, 0x44>
 	{
 	public:
-		CableDeliverySystemDescriptor();
+		CableDeliverySystemDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// CableDeliverySystemDescriptor
 		uint32_t GetFrequency() const noexcept { return m_Frequency; }
@@ -169,10 +169,10 @@ namespace LibISDB
 		: public DescriptorTemplate<ServiceDescriptor, 0x48>
 	{
 	public:
-		ServiceDescriptor();
+		ServiceDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// ServiceDescriptor
 		uint8_t GetServiceType() const noexcept { return m_ServiceType; }
@@ -192,10 +192,10 @@ namespace LibISDB
 		: public DescriptorTemplate<LinkageDescriptor, 0x4A>
 	{
 	public:
-		LinkageDescriptor();
+		LinkageDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// LinkageDescriptor
 		uint16_t GetTransportStreamID() const noexcept { return m_TransportStreamID; }
@@ -219,10 +219,10 @@ namespace LibISDB
 		: public DescriptorTemplate<ShortEventDescriptor, 0x4D>
 	{
 	public:
-		ShortEventDescriptor();
+		ShortEventDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// ShortEventDescriptor
 		uint32_t GetLanguageCode() const noexcept { return m_LanguageCode; }
@@ -247,10 +247,10 @@ namespace LibISDB
 			ARIBString ItemChar;
 		};
 
-		ExtendedEventDescriptor();
+		ExtendedEventDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// ExtendedEventDescriptor
 		uint8_t GetDescriptorNumber() const noexcept { return m_DescriptorNumber; }
@@ -273,10 +273,10 @@ namespace LibISDB
 		: public DescriptorTemplate<ComponentDescriptor, 0x50>
 	{
 	public:
-		ComponentDescriptor();
+		ComponentDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// ComponentDescriptor
 		uint8_t GetStreamContent() const noexcept { return m_StreamContent; }
@@ -300,10 +300,10 @@ namespace LibISDB
 		: public DescriptorTemplate<StreamIDDescriptor, 0x52>
 	{
 	public:
-		StreamIDDescriptor();
+		StreamIDDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// StreamIDDescriptor
 		uint8_t GetComponentTag() const noexcept { return m_ComponentTag; }
@@ -326,24 +326,13 @@ namespace LibISDB
 			uint8_t UserNibble1;         /**< user_nibble */
 			uint8_t UserNibble2;         /**< user_nibble */
 
-			bool operator == (const NibbleInfo &rhs) const noexcept
-			{
-				return (ContentNibbleLevel1 == rhs.ContentNibbleLevel1)
-					&& (ContentNibbleLevel2 == rhs.ContentNibbleLevel2)
-					&& (UserNibble1 == rhs.UserNibble1)
-					&& (UserNibble2 == rhs.UserNibble2);
-			}
-
-			bool operator != (const NibbleInfo &rhs) const noexcept
-			{
-				return !(*this == rhs);
-			}
+			bool operator == (const NibbleInfo &rhs) const noexcept = default;
 		};
 
-		ContentDescriptor();
+		ContentDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// ContentDescriptor
 		int GetNibbleCount() const;
@@ -374,7 +363,7 @@ namespace LibISDB
 		};
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// LocalTimeOffsetDescriptor
 		int GetTimeOffsetInfoCount() const;
@@ -391,10 +380,10 @@ namespace LibISDB
 		: public DescriptorTemplate<HierarchicalTransmissionDescriptor, 0xC0>
 	{
 	public:
-		HierarchicalTransmissionDescriptor();
+		HierarchicalTransmissionDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// HierarchicalTransmissionDescriptor
 		uint8_t GetQualityLevel() const noexcept { return m_QualityLevel; }
@@ -421,10 +410,10 @@ namespace LibISDB
 			uint8_t MaximumBitRate;              /**< maximum_bitrate */
 		};
 
-		DigitalCopyControlDescriptor();
+		DigitalCopyControlDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// DigitalCopyControlDescriptor
 		uint8_t GetDigitalRecordingControlData() const noexcept { return m_DigitalRecordingControlData; }
@@ -453,10 +442,10 @@ namespace LibISDB
 		: public DescriptorTemplate<AudioComponentDescriptor, 0xC4>
 	{
 	public:
-		AudioComponentDescriptor();
+		AudioComponentDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// AudioComponentDescriptor
 		uint8_t GetStreamContent() const noexcept { return m_StreamContent; }
@@ -573,10 +562,10 @@ namespace LibISDB
 			} LinkStoredContentInfo;
 		};
 
-		HyperLinkDescriptor();
+		HyperLinkDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// HyperLinkDescriptor
 		uint8_t GetHyperLinkageType() const noexcept { return m_HyperLinkageType; }
@@ -608,10 +597,10 @@ namespace LibISDB
 			BSPrefectureSpec BS; /** bs_prefecture_spec */
 		};
 
-		TargetRegionDescriptor();
+		TargetRegionDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// TargetRegionDescriptor
 		uint8_t GetRegionSpecType() const noexcept { return m_RegionSpecType; }
@@ -629,10 +618,10 @@ namespace LibISDB
 		: public DescriptorTemplate<VideoDecodeControlDescriptor, 0xC8>
 	{
 	public:
-		VideoDecodeControlDescriptor();
+		VideoDecodeControlDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// VideoDecodeControlDescriptor
 		bool GetStillPictureFlag() const noexcept { return m_StillPictureFlag; }
@@ -652,10 +641,10 @@ namespace LibISDB
 		: public DescriptorTemplate<DownloadContentDescriptor, 0xC9>
 	{
 	public:
-		DownloadContentDescriptor();
+		DownloadContentDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// DownloadContentDescriptor
 		bool GetReboot() const noexcept { return m_Info.Reboot; }
@@ -719,10 +708,10 @@ namespace LibISDB
 		: public DescriptorTemplate<CAEMMTSDescriptor, 0xCA>
 	{
 	public:
-		CAEMMTSDescriptor();
+		CAEMMTSDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// CAEMMTSDescriptor
 		uint16_t GetCASystemID() const noexcept { return m_CASystemID; }
@@ -749,10 +738,10 @@ namespace LibISDB
 			MAX_VERIFICATION_INFO_LENGTH = 172,
 		};
 
-		CAContractInfoDescriptor();
+		CAContractInfoDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// CAContractInfoDescriptor
 		uint16_t GetCASystemID() const noexcept { return m_CASystemID; }
@@ -780,10 +769,10 @@ namespace LibISDB
 		: public DescriptorTemplate<CAServiceDescriptor, 0xCC>
 	{
 	public:
-		CAServiceDescriptor();
+		CAServiceDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// CAServiceDescriptor
 		uint16_t GetCASystemID() const noexcept { return m_CASystemID; }
@@ -812,10 +801,10 @@ namespace LibISDB
 			std::vector<uint16_t> ServiceIDList; /**< service_id */
 		};
 
-		TSInformationDescriptor();
+		TSInformationDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// TSInformationDescriptor
 		uint8_t GetRemoteControlKeyID() const noexcept { return m_RemoteControlKeyID; }
@@ -852,10 +841,10 @@ namespace LibISDB
 			} BroadcasterIDList[15];
 		};
 
-		ExtendedBroadcasterDescriptor();
+		ExtendedBroadcasterDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// ExtendedBroadcasterDescriptor
 		uint8_t GetBroadcasterType() const noexcept { return m_BroadcasterType; }
@@ -876,20 +865,20 @@ namespace LibISDB
 		// logo_transmission_type
 		enum {
 			TRANSMISSION_UNDEFINED,
-			TRANSMISSION_CDT1,		// CDT伝送方式1
-			TRANSMISSION_CDT2,		// CDT伝送方式2
-			TRANSMISSION_CHAR		// 簡易ロゴ方式
+			TRANSMISSION_CDT1, // CDT伝送方式1
+			TRANSMISSION_CDT2, // CDT伝送方式2
+			TRANSMISSION_CHAR  // 簡易ロゴ方式
 		};
 
-		static constexpr size_t MAX_LOGO_CHAR = 12;		// 最大簡易ロゴ長
-		static constexpr uint16_t LOGO_ID_INVALID      = 0xFFFF_u16;	// 無効な logo_id
-		static constexpr uint16_t LOGO_VERSION_INVALID = 0xFFFF_u16;	// 無効な logo_version
-		static constexpr uint16_t DATA_ID_INVALID      = 0xFFFF_u16;	// 無効な download_data_id
+		static constexpr size_t MAX_LOGO_CHAR = 12; // 最大簡易ロゴ長
+		static constexpr uint16_t LOGO_ID_INVALID      = 0xFFFF_u16; // 無効な logo_id
+		static constexpr uint16_t LOGO_VERSION_INVALID = 0xFFFF_u16; // 無効な logo_version
+		static constexpr uint16_t DATA_ID_INVALID      = 0xFFFF_u16; // 無効な download_data_id
 
-		LogoTransmissionDescriptor();
+		LogoTransmissionDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// LogoTransmissionDescriptor
 		uint8_t GetLogoTransmissionType() const noexcept { return m_LogoTransmissionType; }
@@ -925,10 +914,10 @@ namespace LibISDB
 
 		static constexpr uint16_t SERIES_ID_INVALID = 0xFFFF_u16;
 
-		SeriesDescriptor();
+		SeriesDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// SeriesDescriptor
 		uint16_t GetSeriesID() const noexcept { return m_SeriesID; }
@@ -971,24 +960,13 @@ namespace LibISDB
 			uint16_t NetworkID;         /**< original_network_id */
 			uint16_t TransportStreamID; /**< transport_stream_id */
 
-			bool operator == (const EventInfo &rhs) const noexcept
-			{
-				return (ServiceID == rhs.ServiceID)
-					&& (EventID == rhs.EventID)
-					&& (NetworkID == rhs.NetworkID)
-					&& (TransportStreamID == rhs.TransportStreamID);
-			}
-
-			bool operator != (const EventInfo &rhs) const noexcept
-			{
-				return !(*this == rhs);
-			}
+			bool operator == (const EventInfo &rhs) const noexcept = default;
 		};
 
-		EventGroupDescriptor();
+		EventGroupDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// EventGroupDescriptor
 		uint8_t GetGroupType() const noexcept { return m_GroupType; }
@@ -1068,6 +1046,7 @@ namespace LibISDB
 
 				// H-EIT[p/f], M-EIT, L-EIT
 				struct {
+					bool Valid;
 					uint8_t HEITTableCycle;   /**< table_cycle(H-EIT[p/f]) */
 					uint8_t MEITTableCycle;   /**< table_cycle(M-EIT) */
 					uint8_t LEITTableCycle;   /**< table_cycle(L-EIT) */
@@ -1090,14 +1069,14 @@ namespace LibISDB
 							uint8_t Cycle;        /**< cycle */
 						} CycleGroup[3];
 					} MediaTypeList[3];
-				} HEIT_Schedule;
+				} EIT_Schedule;
 			};
 		};
 
-		SIParameterDescriptor();
+		SIParameterDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// SIParameterDescriptor
 		uint8_t GetParameterVersion() const noexcept { return m_ParameterVersion; }
@@ -1119,7 +1098,7 @@ namespace LibISDB
 	{
 	public:
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// BroadcasterNameDescriptor
 		bool GetBroadcasterName(ReturnArg<ARIBString> Name) const;
@@ -1149,10 +1128,10 @@ namespace LibISDB
 			ARIBString Text;           /**< text_char */
 		};
 
-		ComponentGroupDescriptor();
+		ComponentGroupDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// ComponentGroupDescriptor
 		uint8_t GetComponentGroupType() const noexcept { return m_ComponentGroupType; }
@@ -1178,10 +1157,10 @@ namespace LibISDB
 			uint8_t DescriptionType; /**< description_type */
 		};
 
-		LDTLinkageDescriptor();
+		LDTLinkageDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// LDTLinkageDescriptor
 		uint16_t GetOriginalServiceID() const noexcept { return m_OriginalServiceID; }
@@ -1204,10 +1183,10 @@ namespace LibISDB
 		: public DescriptorTemplate<AccessControlDescriptor, 0xF6>
 	{
 	public:
-		AccessControlDescriptor();
+		AccessControlDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// AccessControlDescriptor
 		uint16_t GetCASystemID() const noexcept { return m_CASystemID; }
@@ -1229,10 +1208,10 @@ namespace LibISDB
 		: public DescriptorTemplate<TerrestrialDeliverySystemDescriptor, 0xFA>
 	{
 	public:
-		TerrestrialDeliverySystemDescriptor();
+		TerrestrialDeliverySystemDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// TerrestrialDeliverySystemDescriptor
 		uint16_t GetAreaCode() const noexcept { return m_AreaCode; }
@@ -1255,10 +1234,10 @@ namespace LibISDB
 		: public DescriptorTemplate<PartialReceptionDescriptor, 0xFB>
 	{
 	public:
-		PartialReceptionDescriptor();
+		PartialReceptionDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// PartialReceptionDescriptor
 		int GetServiceCount() const;
@@ -1284,7 +1263,7 @@ namespace LibISDB
 		};
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// EmergencyInformationDescriptor
 		int GetServiceCount() const;
@@ -1301,10 +1280,10 @@ namespace LibISDB
 		: public DescriptorTemplate<DataComponentDescriptor, 0xFD>
 	{
 	public:
-		DataComponentDescriptor();
+		DataComponentDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// DataComponentDescriptor
 		uint16_t GetDataComponentID() const noexcept { return m_DataComponentID; }
@@ -1322,10 +1301,10 @@ namespace LibISDB
 		: public DescriptorTemplate<SystemManagementDescriptor, 0xFE>
 	{
 	public:
-		SystemManagementDescriptor();
+		SystemManagementDescriptor() noexcept;
 
 	// DescriptorBase
-		void Reset() override;
+		void Reset() noexcept override;
 
 	// SystemManagementDescriptor
 		uint8_t GetBroadcastingFlag() const noexcept { return m_BroadcastingFlag; }
@@ -1340,7 +1319,7 @@ namespace LibISDB
 		uint8_t m_AdditionalBroadcastingID; /**< additional_broadcasting_identification */
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_DESCRIPTORS_H
+#endif // ifndef LIBISDB_DESCRIPTORS_H

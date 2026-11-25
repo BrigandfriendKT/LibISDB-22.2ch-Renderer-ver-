@@ -33,4 +33,4 @@
 #include "Base/Debug.hpp"
 
 
-#endif	// ifndef LIBISDB_PRIVATE_H
+#endif // ifndef LIBISDB_PRIVATE_H

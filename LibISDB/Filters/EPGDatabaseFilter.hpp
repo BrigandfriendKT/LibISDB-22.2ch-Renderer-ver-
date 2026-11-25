@@ -77,7 +77,7 @@ namespace LibISDB
 		void OnTOTSection(const PSITableBase *pTable, const PSISection *pSection);
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_EPG_DATABASE_FILTER_H
+#endif // ifndef LIBISDB_EPG_DATABASE_FILTER_H

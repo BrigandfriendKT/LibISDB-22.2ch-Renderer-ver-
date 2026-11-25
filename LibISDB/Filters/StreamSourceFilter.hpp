@@ -59,7 +59,7 @@ namespace LibISDB
 		bool StopStreaming() override;
 
 	// SourceFilter
-		bool OpenSource(const CStringView &Name) override;
+		bool OpenSource(const String &Name) override;
 		bool CloseSource() override;
 		bool IsSourceOpen() const override;
 		bool FetchSource(size_t RequestSize) override;
@@ -109,7 +109,7 @@ namespace LibISDB
 		std::atomic_bool m_IsStreaming;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_STREAM_SOURCE_FILTER_H
+#endif // ifndef LIBISDB_STREAM_SOURCE_FILTER_H

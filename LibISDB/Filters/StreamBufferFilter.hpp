@@ -74,7 +74,7 @@ namespace LibISDB
 		bool m_ClearOnReset;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_STREAM_BUFFER_FILTER_H
+#endif // ifndef LIBISDB_STREAM_BUFFER_FILTER_H

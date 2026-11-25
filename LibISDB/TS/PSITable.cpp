@@ -46,7 +46,7 @@ void PSITableBase::Reset()
 }
 
 
-unsigned long PSITableBase::GetCRCErrorCount() const
+unsigned long PSITableBase::GetCRCErrorCount() const noexcept
 {
 	return m_PSISectionParser.GetCRCErrorCount();
 }
@@ -496,4 +496,4 @@ bool PSITableSet::OnPSISection(const PSISectionParser *pSectionParser, const PSI
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

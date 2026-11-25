@@ -98,4 +98,4 @@ bool BitRateCalculator::SetUpdateInterval(TickClock::ClockType Interval)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

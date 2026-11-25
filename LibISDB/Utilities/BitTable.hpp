@@ -63,6 +63,7 @@ namespace LibISDB
 		{
 			if (&rhs != this) {
 				SetSize(rhs.m_Size);
+				m_Bits = rhs.m_Bits;
 				if (m_Table)
 					std::memcpy(m_Table.get(), rhs.m_Table.get(), (m_Size + 7) >> 3);
 			}
@@ -142,7 +143,7 @@ namespace LibISDB
 		std::unique_ptr<uint8_t[]> m_Table;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_BIT_TABLE_H
+#endif // ifndef LIBISDB_BIT_TABLE_H

@@ -44,6 +44,14 @@ namespace LibISDB::DirectShow
 {
 
 
+void AACDecoder_FAAD2::GetVersion(std::string *pVersion)
+{
+	char *pID;
+	::NeAACDecGetVersion(&pID, nullptr);
+	*pVersion = pID;
+}
+
+
 AACDecoder_FAAD2::AACDecoder_FAAD2() noexcept
 	: m_hDecoder(nullptr)
 	, m_InitRequest(false)
@@ -118,7 +126,7 @@ bool AACDecoder_FAAD2::GetDownmixInfo(ReturnArg<DownmixInfo> Info) const
 	ただしTVTestでは元々この規定は無視していた
 	*/
 
-	static const double PSQR = 1.0 / 1.4142135623730950488016887242097;
+	constexpr double PSQR = 1.0 / 1.4142135623730950488016887242097;
 
 	Info->Center = PSQR;
 	Info->Front  = 1.0;
@@ -191,7 +199,7 @@ bool AACDecoder_FAAD2::DecodeFrame(const ADTSFrame *pFrame, ReturnArg<DecodeFram
 		if (!m_InitRequest) {
 			// チャンネル設定が変化した、デコーダリセット
 			LIBISDB_TRACE(
-				LIBISDB_STR("AACDecoder_FAAD2::DecodeFrame() Channel config changed %d -> %d\n"),
+				LIBISDB_STR("AACDecoder_FAAD2::DecodeFrame() Channel config changed {} -> {}\n"),
 				m_LastChannelConfig,
 				pFrame->GetChannelConfig());
 			if (!ResetDecoder())
@@ -242,7 +250,7 @@ bool AACDecoder_FAAD2::DecodeFrame(const ADTSFrame *pFrame, ReturnArg<DecodeFram
 	} else {
 		// エラー発生
 		LIBISDB_TRACE(
-			LIBISDB_STR("NeAACDecDecode() error \"%") LIBISDB_STR(LIBISDB_PRIs) LIBISDB_STR("\"\n"),
+			"NeAACDecDecode() error \"{}\"\n",
 			NeAACDecGetErrorMessage(FrameInfo.error));
 
 		// リセットする
@@ -253,4 +261,4 @@ bool AACDecoder_FAAD2::DecodeFrame(const ADTSFrame *pFrame, ReturnArg<DecodeFram
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

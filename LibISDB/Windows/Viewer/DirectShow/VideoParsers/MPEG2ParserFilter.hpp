@@ -88,7 +88,7 @@ namespace LibISDB::DirectShow
 		IMediaSample *m_pOutSample;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_MPEG2_PARSER_FILTER_H
+#endif // ifndef LIBISDB_MPEG2_PARSER_FILTER_H

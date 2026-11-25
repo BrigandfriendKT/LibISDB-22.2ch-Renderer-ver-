@@ -71,7 +71,7 @@ namespace LibISDB
 #endif
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_CONDITION_VARIABLE_H
+#endif // ifndef LIBISDB_CONDITION_VARIABLE_H

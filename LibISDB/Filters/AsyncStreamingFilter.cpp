@@ -313,4 +313,4 @@ bool AsyncStreamingFilter::PullSourceThread::ProcessStream()
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

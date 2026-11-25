@@ -227,4 +227,4 @@ bool SingleIOFilter::ReceiveData(DataStream *pData)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

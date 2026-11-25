@@ -49,25 +49,6 @@ namespace LibISDB
 	inline std::size_t StringLength(const char *pString, std::size_t Length) { return ::strnlen(pString, Length); }
 	inline std::size_t StringLength(const wchar_t *pString, std::size_t Length) { return ::wcsnlen(pString, Length); }
 
-	template<typename... TArgs> inline int StringPrintf(char *pString, std::size_t Length, const char *pFormat, TArgs... Args) {
-		return std::snprintf(pString, Length, pFormat, Args...);
-	}
-	template<typename... TArgs> inline int StringPrintf(wchar_t *pString, std::size_t Length, const wchar_t *pFormat, TArgs... Args) {
-		return std::swprintf(pString, Length, pFormat, Args...);
-	}
-	inline int StringPrintfV(char *pString, std::size_t Length, const char *pFormat, std::va_list Args) {
-		return std::vsnprintf(pString, Length, pFormat, Args);
-	}
-	inline int StringPrintfV(wchar_t *pString, std::size_t Length, const wchar_t *pFormat, std::va_list Args) {
-		return std::vswprintf(pString, Length, pFormat, Args);
-	}
-	template<typename T, std::size_t N, typename... TArgs> inline int StringPrintf(T (&String)[N], const T *pFormat, TArgs... Args) {
-		return StringPrintf(String, N, pFormat, Args...);
-	}
-	template<typename T, std::size_t N> inline int StringPrintfV(T (&String)[N], const T *pFormat, std::va_list Args) {
-		return StringPrintfV(String, N, pFormat, Args);
-	}
-
 LIBISDB_PRAGMA_MSVC(warning(push))
 LIBISDB_PRAGMA_MSVC(warning(disable:4996))
 	inline void StringCopy(char *pDstString, const char *pSrcString) { std::strcpy(pDstString, pSrcString); }
@@ -83,10 +64,10 @@ LIBISDB_PRAGMA_MSVC(warning(pop))
 	}
 #else
 	inline void StringCopy(char *pDstString, const char *pSrcString, std::size_t Length) {
-		StringPrintf(pDstString, Length, "%s", pSrcString);
+		std::snprintf(pDstString, Length, "%s", pSrcString);
 	}
 	inline void StringCopy(wchar_t *pDstString, const wchar_t *pSrcString, std::size_t Length) {
-		StringPrintf(pDstString, Length, L"%ls", pSrcString);
+		std::swprintf(pDstString, Length, L"%ls", pSrcString);
 	}
 #endif
 
@@ -149,8 +130,10 @@ LIBISDB_PRAGMA_MSVC(warning(pop))
 	inline char ToLower(char c) { return static_cast<char>(std::tolower(c)); }
 	inline wchar_t ToLower(wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); }
 
-	template<typename T> inline int StringCompareI(
-		const std::basic_string<T> &String1, const std::basic_string<T> &String2)
+	template<typename TChar, typename TTraits = std::char_traits<TChar>>
+	inline int StringCompareI(
+		std::basic_string_view<TChar, TTraits> String1,
+		std::basic_string_view<TChar, TTraits> String2)
 	{
 		auto it1  = String1.begin();
 		auto end1 = String1.end();
@@ -158,8 +141,8 @@ LIBISDB_PRAGMA_MSVC(warning(pop))
 		auto end2 = String2.end();
 
 		for (;(it1 != end1) && (it2 != end2); ++it1, ++it2) {
-			const T c1 = ToLower(*it1);
-			const T c2 = ToLower(*it2);
+			const TChar c1 = ToLower(*it1);
+			const TChar c2 = ToLower(*it2);
 			if (c1 < c2)
 				return -1;
 			if (c1 > c2)
@@ -173,7 +156,21 @@ LIBISDB_PRAGMA_MSVC(warning(pop))
 		return 0;
 	}
 
-}	// namespace LibISDB
+	template<typename TChar, typename TTraits = std::char_traits<TChar>, typename TAllocator = std::allocator<TChar>>
+	inline int StringCompareI(
+		const std::basic_string<TChar, TTraits, TAllocator> &String1,
+		const std::basic_string<TChar, TTraits, TAllocator> &String2)
+	{
+		return StringCompareI(
+			std::basic_string_view<TChar, TTraits>(String1),
+			std::basic_string_view<TChar, TTraits>(String2));
+	}
+
+	inline bool StringEqualsI(StringView String1, StringView String2) {
+		return String1.length() == String2.length() && StringCompareI(String1, String2) == 0;
+	}
+
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_STRING_UTILITIES_H
+#endif // ifndef LIBISDB_STRING_UTILITIES_H

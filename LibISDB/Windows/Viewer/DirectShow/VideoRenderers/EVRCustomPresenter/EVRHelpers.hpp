@@ -50,7 +50,7 @@ namespace LibISDB::DirectShow
 
 		ULONG Release()
 		{
-			ULONG Count = ::InterlockedDecrement(&m_RefCount);
+			const ULONG Count = ::InterlockedDecrement(&m_RefCount);
 			if (Count == 0) {
 				delete this;
 			}
@@ -95,15 +95,7 @@ namespace LibISDB::DirectShow
 
 			Position() = default;
 
-			bool operator == (const Position &rhs) const noexcept
-			{
-				return pNode == rhs.pNode;
-			}
-
-			bool operator != (const Position &rhs) const noexcept
-			{
-				return pNode != rhs.pNode;
-			}
+			bool operator == (const Position &rhs) const noexcept = default;
 
 		private:
 			const Node *pNode = nullptr;
@@ -356,7 +348,7 @@ namespace LibISDB::DirectShow
 				return E_POINTER;
 			}
 
-			HRESULT hr = LinkedList<T *>::InsertAfter(pItem, pBefore);
+			const HRESULT hr = LinkedList<T *>::InsertAfter(pItem, pBefore);
 
 			if (SUCCEEDED(hr)) {
 				if (pItem) {
@@ -370,7 +362,7 @@ namespace LibISDB::DirectShow
 		HRESULT GetItem(const Node *pNode, T **ppItem) override
 		{
 			T *pItem = nullptr;
-			HRESULT hr = LinkedList<T *>::GetItem(pNode, &pItem);
+			const HRESULT hr = LinkedList<T *>::GetItem(pNode, &pItem);
 
 			if (SUCCEEDED(hr)) {
 				*ppItem = pItem;
@@ -385,7 +377,7 @@ namespace LibISDB::DirectShow
 		HRESULT RemoveItem(Node *pNode, T **ppItem) override
 		{
 			T *pItem = nullptr;
-			HRESULT hr = LinkedList<T *>::RemoveItem(pNode, &pItem);
+			const HRESULT hr = LinkedList<T *>::RemoveItem(pNode, &pItem);
 
 			if (SUCCEEDED(hr)) {
 				if (ppItem) {
@@ -522,7 +514,7 @@ namespace LibISDB::DirectShow
 		size_t m_PendingCount;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_EVR_HELPERS_H
+#endif // ifndef LIBISDB_EVR_HELPERS_H

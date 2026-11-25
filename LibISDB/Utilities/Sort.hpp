@@ -77,7 +77,7 @@ namespace LibISDB
 		InsertionSort(std::begin(Array), std::end(Array));
 	}
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_SORT_H
+#endif // ifndef LIBISDB_SORT_H

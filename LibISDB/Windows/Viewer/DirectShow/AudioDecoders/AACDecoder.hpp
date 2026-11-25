@@ -64,7 +64,7 @@ namespace LibISDB::DirectShow
 		bool m_DecodeError;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_AAC_DECODER_H
+#endif // ifndef LIBISDB_AAC_DECODER_H

@@ -46,7 +46,7 @@ namespace LibISDB
 		bool ReceiveData(DataStream *pData) override;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_TEE_FILTER_H
+#endif // ifndef LIBISDB_TEE_FILTER_H

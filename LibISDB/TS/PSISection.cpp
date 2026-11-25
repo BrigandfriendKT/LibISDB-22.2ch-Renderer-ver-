@@ -104,14 +104,14 @@ bool PSISection::ParseHeader(bool IsExtended, bool IgnoreSectionNumber)
 		if (!IgnoreSectionNumber
 				&& (m_Header.SectionNumber > m_Header.LastSectionNumber)) {
 			LIBISDB_TRACE_WARNING(
-				LIBISDB_STR("PSISection : Invalid section_number %u / %u | table_id %02X\n"),
+				LIBISDB_STR("PSISection : Invalid section_number {} / {} | table_id {:02X}\n"),
 				m_Header.SectionNumber, m_Header.LastSectionNumber, m_Header.TableID);
 			return false;
 		}
 
 		if (m_Header.SectionLength < 9) {
 			LIBISDB_TRACE_WARNING(
-				LIBISDB_STR("PSISection : Invalid section_length %u | table_id %02X\n"),
+				LIBISDB_STR("PSISection : Invalid section_length {} | table_id {:02X}\n"),
 				m_Header.SectionLength, m_Header.TableID);
 			return false;
 		}
@@ -121,14 +121,14 @@ bool PSISection::ParseHeader(bool IsExtended, bool IgnoreSectionNumber)
 }
 
 
-void PSISection::Reset()
+void PSISection::Reset() noexcept
 {
 	ClearSize();
 	m_Header = PSIHeader();
 }
 
 
-const uint8_t * PSISection::GetPayloadData() const
+const uint8_t * PSISection::GetPayloadData() const noexcept
 {
 	const size_t HeaderSize = (m_Header.SectionSyntaxIndicator ? 8 : 3);
 
@@ -139,7 +139,7 @@ const uint8_t * PSISection::GetPayloadData() const
 }
 
 
-uint16_t PSISection::GetPayloadSize() const
+uint16_t PSISection::GetPayloadSize() const noexcept
 {
 	const size_t HeaderSize = (m_Header.SectionSyntaxIndicator ? 8 : 3);
 
@@ -253,7 +253,7 @@ void PSISectionParser::StorePacket(const TSPacket *pPacket)
 }
 
 
-void PSISectionParser::Reset()
+void PSISectionParser::Reset() noexcept
 {
 	m_IsPayloadStoring = false;
 	m_StoreSize = 0;
@@ -268,7 +268,7 @@ void PSISectionParser::SetPSISectionHandler(PSISectionHandler *pSectionHandler)
 }
 
 
-unsigned long PSISectionParser::GetCRCErrorCount() const
+unsigned long PSISectionParser::GetCRCErrorCount() const noexcept
 {
 	return m_CRCErrorCount;
 }
@@ -282,7 +282,7 @@ bool PSISectionParser::StoreHeader(const uint8_t *pData, uint8_t *pRemain)
 	}
 
 	const uint8_t HeaderSize = (m_IsExtended ? 8 : 3);
-	const uint8_t HeaderRemain = HeaderSize - (uint8_t)m_PSISection.GetSize();
+	const uint8_t HeaderRemain = HeaderSize - static_cast<uint8_t>(m_PSISection.GetSize());
 
 	if (HeaderRemain > *pRemain) {
 		// ヘッダの途中までしかまだデータが無い
@@ -327,13 +327,13 @@ bool PSISectionParser::StorePayload(const uint8_t *pData, uint8_t *pRemain)
 		if (m_pPSISectionHandler != nullptr)
 			m_pPSISectionHandler->OnPSISection(this, &m_PSISection);
 		LIBISDB_TRACE_VERBOSE(
-			LIBISDB_STR("PSISection Stored: table_id %02X | %zu / %u bytes\n"),
+			LIBISDB_STR("PSISection Stored: table_id {:02X} | {} / {} bytes\n"),
 			m_PSISection.GetTableID(), m_PSISection.GetSize(), m_StoreSize);
 	} else {
 		if (m_CRCErrorCount < std::numeric_limits<unsigned long>::max())
 			m_CRCErrorCount++;
 		LIBISDB_TRACE_WARNING(
-			LIBISDB_STR("PSISection CRC Error: table_id %02X | %zu / %u bytes\n"),
+			LIBISDB_STR("PSISection CRC Error: table_id {:02X} | {} / {} bytes\n"),
 			m_PSISection.GetTableID(), m_PSISection.GetSize(), m_StoreSize);
 	}
 
@@ -346,4 +346,4 @@ bool PSISectionParser::StorePayload(const uint8_t *pData, uint8_t *pRemain)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

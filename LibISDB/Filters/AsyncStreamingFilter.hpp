@@ -115,7 +115,7 @@ namespace LibISDB
 		SourceFilter *m_pSourceFilter;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_ASYNC_STREAMING_FILTER_H
+#endif // ifndef LIBISDB_ASYNC_STREAMING_FILTER_H

@@ -41,13 +41,11 @@ namespace LibISDB
 		{
 			return std::memcmp(Value, rhs.Value, 16) == 0;
 		}
-
-		bool operator != (const MD5Value &rhs) const noexcept { return !(*this == rhs); }
 	};
 
 	MD5Value CalcMD5(const uint8_t *pData, size_t DataSize) noexcept;
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_MD5_H
+#endif // ifndef LIBISDB_MD5_H

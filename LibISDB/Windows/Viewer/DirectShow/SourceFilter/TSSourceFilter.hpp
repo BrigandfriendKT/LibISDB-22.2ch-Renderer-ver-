@@ -82,7 +82,7 @@ namespace LibISDB::DirectShow
 		bool m_OutputWhenPaused;
 	};
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow
 
 
-#endif	// ifndef LIBISDB_TS_SOURCE_FILTER_H
+#endif // ifndef LIBISDB_TS_SOURCE_FILTER_H

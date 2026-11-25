@@ -33,8 +33,8 @@
 #if defined(LIBISDB_DEBUG_NEW) && !defined(LIBISDB_NO_DEFINE_NEW)
 #define new LIBISDB_DEBUG_NEW
 #endif
-#endif	// _MSC_VER
-#endif	// LIBISDB_DEBUG
+#endif // _MSC_VER
+#endif // LIBISDB_DEBUG
 
 
-#endif	// ifndef LIBISDB_DEBUG_DEF_H
+#endif // ifndef LIBISDB_DEBUG_DEF_H

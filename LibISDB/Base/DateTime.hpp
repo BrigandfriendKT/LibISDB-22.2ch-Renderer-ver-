@@ -54,8 +54,7 @@ namespace LibISDB
 		DateTime() noexcept;
 		DateTime(const std::tm &Src) noexcept;
 
-		bool operator == (const DateTime &rhs) const noexcept;
-		bool operator != (const DateTime &rhs) const noexcept { return !(*this == rhs); }
+		bool operator == (const DateTime &rhs) const noexcept = default;
 		bool operator < (const DateTime &rhs) const noexcept;
 		bool operator <= (const DateTime &rhs) const noexcept;
 		bool operator > (const DateTime &rhs) const noexcept;
@@ -103,7 +102,7 @@ namespace LibISDB
 	int GetDayOfYear(int Year, int Month, int Day);
 	int GetDayOfWeek(int Year, int Month, int Day);
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_DATE_TIME_H
+#endif // ifndef LIBISDB_DATE_TIME_H

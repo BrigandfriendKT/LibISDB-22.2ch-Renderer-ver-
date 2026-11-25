@@ -248,4 +248,4 @@ bool VideoRenderer_VMR7::SetVisible(bool Visible)
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

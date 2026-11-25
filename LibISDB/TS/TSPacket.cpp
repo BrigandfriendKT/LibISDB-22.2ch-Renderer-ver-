@@ -107,19 +107,19 @@ TSPacket::ParseResult TSPacket::ParsePacket(uint8_t *pContinuityCounter)
 	}
 
 	if (m_Header.SyncByte != 0x47_u8)
-		return ParseResult::FormatError;	// 同期バイト不正
+		return ParseResult::FormatError; // 同期バイト不正
 	if (m_Header.TransportErrorIndicator)
-		return ParseResult::TransportError;	// ビット誤りあり
+		return ParseResult::TransportError; // ビット誤りあり
 	if ((m_Header.PID >= 0x0002_u16) && (m_Header.PID <= 0x000F_u16))
-		return ParseResult::FormatError;	// 未定義PID範囲
+		return ParseResult::FormatError; // 未定義PID範囲
 	if (m_Header.TransportScramblingControl == 0x01_u8)
-		return ParseResult::FormatError;	// 未定義スクランブル制御値
+		return ParseResult::FormatError; // 未定義スクランブル制御値
 	if (m_Header.AdaptationFieldControl == 0x00_u8)
-		return ParseResult::FormatError;	// 未定義アダプテーションフィールド制御値
+		return ParseResult::FormatError; // 未定義アダプテーションフィールド制御値
 	if ((m_Header.AdaptationFieldControl == 0x02_u8) && (m_AdaptationField.AdaptationFieldLength > 183_u8))
-		return ParseResult::FormatError;	// アダプテーションフィールド長異常
+		return ParseResult::FormatError; // アダプテーションフィールド長異常
 	if ((m_Header.AdaptationFieldControl == 0x03_u8) && (m_AdaptationField.AdaptationFieldLength > 182_u8))
-		return ParseResult::FormatError;	// アダプテーションフィールド長異常
+		return ParseResult::FormatError; // アダプテーションフィールド長異常
 
 	if ((pContinuityCounter != nullptr) && (m_Header.PID != PID_NULL)) {
 		// 連続性チェック
@@ -144,8 +144,8 @@ void TSPacket::ReparsePacket()
 {
 	// TSパケットヘッダ解析
 	const uint32_t Header = Load32(m_pData);
-//	m_Header.SyncByte                   = static_cast<uint8_t>(Header >> 24);
-//	m_Header.TransportErrorIndicator    = (Header & 0x800000_u32) != 0;
+	//m_Header.SyncByte                   = static_cast<uint8_t>(Header >> 24);
+	//m_Header.TransportErrorIndicator    = (Header & 0x800000_u32) != 0;
 	m_Header.PayloadUnitStartIndicator  = (Header & 0x400000_u32) != 0;
 	m_Header.TransportPriority          = (Header & 0x200000_u32) != 0;
 	m_Header.PID                        = static_cast<uint16_t>((Header >> 8) & 0x1FFF);
@@ -175,10 +175,10 @@ void TSPacket::ReparsePacket()
 uint8_t * TSPacket::GetPayloadData()
 {
 	switch (m_Header.AdaptationFieldControl) {
-	case 1:	// ペイロードのみ
+	case 1: // ペイロードのみ
 		return &m_pData[4];
 
-	case 3:	// アダプテーションフィールド、ペイロードあり
+	case 3: // アダプテーションフィールド、ペイロードあり
 		return &m_pData[m_AdaptationField.AdaptationFieldLength + 5];
 	}
 
@@ -190,10 +190,10 @@ uint8_t * TSPacket::GetPayloadData()
 const uint8_t * TSPacket::GetPayloadData() const
 {
 	switch (m_Header.AdaptationFieldControl) {
-	case 1:	// ペイロードのみ
+	case 1: // ペイロードのみ
 		return &m_pData[4];
 
-	case 3:	// アダプテーションフィールド、ペイロードあり
+	case 3: // アダプテーションフィールド、ペイロードあり
 		return &m_pData[m_AdaptationField.AdaptationFieldLength + 5];
 	}
 
@@ -205,11 +205,11 @@ const uint8_t * TSPacket::GetPayloadData() const
 uint8_t TSPacket::GetPayloadSize() const
 {
 	switch (m_Header.AdaptationFieldControl) {
-	case 1:	// ペイロードのみ
-		return (uint8_t)(TS_PACKET_SIZE - 4);
+	case 1: // ペイロードのみ
+		return static_cast<uint8_t>(TS_PACKET_SIZE - 4);
 
-	case 3:	// アダプテーションフィールド、ペイロードあり
-		return (uint8_t)(TS_PACKET_SIZE - m_AdaptationField.AdaptationFieldLength - 5);
+	case 3: // アダプテーションフィールド、ペイロードあり
+		return static_cast<uint8_t>(TS_PACKET_SIZE - m_AdaptationField.AdaptationFieldLength - 5);
 	}
 
 	// アダプテーションフィールドのみ or 例外
@@ -283,4 +283,4 @@ void * TSPacket::ReAllocate(void *pBuffer, size_t Size)
 }
 
 
-}	//namespace LibISDB
+} //namespace LibISDB

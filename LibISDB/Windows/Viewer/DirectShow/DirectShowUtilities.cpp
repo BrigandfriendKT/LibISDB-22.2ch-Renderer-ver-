@@ -29,6 +29,7 @@
 #include <initguid.h>
 #include <ks.h>
 #include "DirectShowUtilities.hpp"
+#include "../../../Utilities/StringFormat.hpp"
 #include "../../../Utilities/StringUtilities.hpp"
 #include "../../../Base/DebugDef.hpp"
 
@@ -88,7 +89,7 @@ bool GetFilterInfoListFromEnumMoniker(IEnumMoniker *pEnum, FilterInfoList *pFilt
 }
 
 
-}	// namespace
+} // namespace
 
 
 
@@ -379,7 +380,7 @@ HRESULT AddToROT(IUnknown *pUnkGraph, DWORD *pRegister)
 		return hr;
 
 	WCHAR Name[256];
-	StringPrintf(Name, L"FilterGraph %p pid %08x", pUnkGraph, ::GetCurrentProcessId());
+	StringFormat(Name, L"FilterGraph {} pid {:08x}", static_cast<void *>(pUnkGraph), ::GetCurrentProcessId());
 
 	IMoniker *pMoniker;
 	hr = ::CreateItemMoniker(L"!", Name, &pMoniker);
@@ -503,7 +504,7 @@ bool HasPropertyPage(IBaseFilter *pFilter)
 
 	if (pFilter != nullptr) {
 		ISpecifyPropertyPages *pProp;
-		HRESULT hr = pFilter->QueryInterface(IID_PPV_ARGS(&pProp));
+		const HRESULT hr = pFilter->QueryInterface(IID_PPV_ARGS(&pProp));
 		if (SUCCEEDED(hr)) {
 			CAUUID caGUID = {0, nullptr};
 
@@ -679,4 +680,4 @@ RECT MapRect(const RECT &Rect, LONG XNum, LONG XDenom, LONG YNum, LONG YDenom)
 }
 
 
-}	// namespace LibISDB::DirectShow
+} // namespace LibISDB::DirectShow

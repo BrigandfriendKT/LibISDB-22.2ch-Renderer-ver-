@@ -44,4 +44,4 @@ bool TeeFilter::ReceiveData(DataStream *pData)
 }
 
 
-}	// namespace LibISDB
+} // namespace LibISDB

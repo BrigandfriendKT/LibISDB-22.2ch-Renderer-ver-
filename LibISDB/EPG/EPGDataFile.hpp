@@ -51,6 +51,7 @@ namespace LibISDB
 			PriorityIdle = 0x0020U, /**< 最低優先度 */
 			DiscardOld   = 0x0040U, /**< 古い情報を破棄 */
 			Flush        = 0x0080U, /**< 書き出し時にフラッシュする */
+			LIBISDB_ENUM_FLAGS_TRAILER
 		};
 
 		enum class Exception {
@@ -65,9 +66,9 @@ namespace LibISDB
 		EPGDataFile() noexcept;
 
 	// LibISDB::ObjectBase
-		const CharType * GetObjectName() const noexcept { return LIBISDB_STR("EPGDataFile"); }
+		const CharType * GetObjectName() const noexcept override { return LIBISDB_STR("EPGDataFile"); }
 
-		bool Open(EPGDatabase *pEPGDatabase, const CStringView &FileName, OpenFlag Flags);
+		bool Open(EPGDatabase *pEPGDatabase, const String &FileName, OpenFlag Flags);
 		void Close();
 		bool IsOpen() const;
 		bool Load();
@@ -103,9 +104,7 @@ namespace LibISDB
 		EventInfo::SourceIDType m_SourceID;
 	};
 
-	LIBISDB_ENUM_FLAGS(EPGDataFile::OpenFlag)
-
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_EPG_DATA_FILE_H
+#endif // ifndef LIBISDB_EPG_DATA_FILE_H

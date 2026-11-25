@@ -55,7 +55,7 @@ namespace LibISDB
 		unsigned long m_BitRate;
 	};
 
-}	// namespace LibISDB
+} // namespace LibISDB
 
 
-#endif	// ifndef LIBISDB_BIT_RATE_CALCULATOR_H
+#endif // ifndef LIBISDB_BIT_RATE_CALCULATOR_H
