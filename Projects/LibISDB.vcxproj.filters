@@ -325,9 +325,6 @@
     <ClInclude Include="..\LibISDB\Base\StreamingThread.hpp">
       <Filter>Base\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LibISDB\Templates\cstring_view.hpp">
-      <Filter>Templates</Filter>
-    </ClInclude>
     <ClInclude Include="..\LibISDB\Templates\EnumFlags.hpp">
       <Filter>Templates</Filter>
     </ClInclude>
@@ -345,6 +342,9 @@
     </ClInclude>
     <ClInclude Include="..\LibISDB\Base\FileStreamPOSIX.hpp">
       <Filter>Base\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LibISDB\Utilities\StringFormat.hpp">
+      <Filter>Utilities\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -560,6 +560,9 @@
     </ClCompile>
     <ClCompile Include="..\LibISDB\Base\FileStreamPOSIX.cpp">
       <Filter>Base\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\LibISDB\Utilities\StringFormat.cpp">
+      <Filter>Utilities\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
